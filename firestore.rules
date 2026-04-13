@@ -1,0 +1,57 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isUser(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Profile doc at users/{userId}
+    match /users/{userId} {
+      allow read, write: if isUser(userId);
+    }
+
+    // Subcollections (e.g. dogs) and deeper paths under that user.
+    match /users/{userId}/{document=**} {
+      allow read, write: if isUser(userId);
+    }
+
+    match /sessions/{sessionId} {
+      allow read: if isSignedIn() &&
+        resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() &&
+        request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isSignedIn() &&
+        resource.data.userId == request.auth.uid;
+    }
+
+    match /devices/{deviceId} {
+      allow read: if isSignedIn() &&
+        resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() &&
+        request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isSignedIn() &&
+        resource.data.ownerId == request.auth.uid;
+    }
+
+    match /notifications/{notificationId} {
+      allow read, update, delete: if isSignedIn() &&
+        resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() &&
+        request.resource.data.userId == request.auth.uid;
+    }
+
+    // OTP + reset sessions — Cloud Functions (Admin SDK) only. Never from the app client.
+    match /password_reset_otps/{docId} {
+      allow read, write: if false;
+    }
+
+    match /password_reset_sessions/{docId} {
+      allow read, write: if false;
+    }
+  }
+}

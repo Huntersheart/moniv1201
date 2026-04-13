@@ -1,0 +1,51 @@
+{
+  "functions": {
+    "source": "functions"
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "hunters-heart",
+          "appId": "1:190818522498:android:5848f182ee623f347beb9b",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "hunters-heart",
+          "appId": "1:190818522498:ios:286b0309515a86bb7beb9b",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "macos": {
+        "default": {
+          "projectId": "hunters-heart",
+          "appId": "1:190818522498:ios:286b0309515a86bb7beb9b",
+          "uploadDebugSymbols": false,
+          "fileOutput": "macos/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "hunters-heart",
+          "configurations": {
+            "android": "1:190818522498:android:5848f182ee623f347beb9b",
+            "ios": "1:190818522498:ios:286b0309515a86bb7beb9b",
+            "macos": "1:190818522498:ios:286b0309515a86bb7beb9b",
+            "web": "1:190818522498:web:dcf1ecab7352171a7beb9b",
+            "windows": "1:190818522498:web:7a0a20967e15b1f87beb9b"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "190818522498",
+    "project_id": "hunters-heart",
+    "storage_bucket": "hunters-heart.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:190818522498:android:5848f182ee623f347beb9b",
+        "android_client_info": {
+          "package_name": "com.example.slgnara_collar"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCp3QtjPp9D8QBsRevNp0RbT789bb34nIQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
