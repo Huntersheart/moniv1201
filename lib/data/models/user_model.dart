@@ -14,6 +14,14 @@ class UserModel {
   /// Last successful app login (synced to Firestore on each sign-in).
   final DateTime? lastLoginAt;
 
+  /// User role stored in Firestore. Supported values:
+  ///   'admin'   → full access, sees all 3 modules in Start Session
+  ///   'pioneer' → limited access, sees only SIGNARA™ Collar (default)
+  final String role;
+
+  bool get isAdmin => role == 'admin';
+  bool get isPioneer => !isAdmin;
+
   const UserModel({
     required this.uid,
     required this.email,
@@ -25,6 +33,7 @@ class UserModel {
     required this.createdAt,
     required this.updatedAt,
     this.lastLoginAt,
+    this.role = 'pioneer',
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
@@ -39,6 +48,7 @@ class UserModel {
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (map['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       lastLoginAt: (map['lastLoginAt'] as Timestamp?)?.toDate(),
+      role: map['role'] as String? ?? 'pioneer',
     );
   }
 
@@ -55,6 +65,7 @@ class UserModel {
       'updatedAt': Timestamp.fromDate(updatedAt),
       if (lastLoginAt != null)
         'lastLoginAt': Timestamp.fromDate(lastLoginAt!),
+      'role': role,
     };
   }
 
@@ -69,6 +80,7 @@ class UserModel {
     DateTime? createdAt,
     DateTime? updatedAt,
     DateTime? lastLoginAt,
+    String? role,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -81,6 +93,7 @@ class UserModel {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       lastLoginAt: lastLoginAt ?? this.lastLoginAt,
+      role: role ?? this.role,
     );
   }
 }

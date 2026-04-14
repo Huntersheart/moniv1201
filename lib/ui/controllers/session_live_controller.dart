@@ -175,8 +175,13 @@ class SessionLiveController extends GetxController {
     required String deviceLabel,
     String moduleType = 'training',
   }) async {
-    final uid = Get.find<AuthController>().currentUser.value?.uid ?? '';
-    if (uid.isEmpty) return;
+    final uid = Get.isRegistered<AuthController>()
+        ? Get.find<AuthController>().currentUser.value?.uid ?? ''
+        : '';
+    if (uid.isEmpty) {
+      _snack('Not signed in', 'Please sign in before starting a session.');
+      return;
+    }
 
     isLoading.value = true;
     try {

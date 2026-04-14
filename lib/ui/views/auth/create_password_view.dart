@@ -3,11 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
 import '../../controllers/auth_controller.dart';
-import '../../controllers/password_reset_otp_controller.dart';
 import '../../widgets/signara_centered_screen_body.dart';
 import '../../widgets/signara_primary_button.dart';
 import '../../widgets/signara_text_field.dart';
 
+/// Shown after the user opens the password-reset link from email (`oobCode`).
 class CreatePasswordView extends StatefulWidget {
   const CreatePasswordView({super.key});
 
@@ -22,13 +22,11 @@ class _CreatePasswordViewState extends State<CreatePasswordView> {
   bool _obscure2 = true;
 
   late final AuthController _auth;
-  late final PasswordResetOtpController _otp;
 
   @override
   void initState() {
     super.initState();
     _auth = Get.find<AuthController>();
-    _otp = Get.find<PasswordResetOtpController>();
   }
 
   @override
@@ -38,25 +36,23 @@ class _CreatePasswordViewState extends State<CreatePasswordView> {
     super.dispose();
   }
 
-  bool get _usesEmailLinkReset {
-    final oob = Get.parameters['oobCode'];
-    return oob != null && oob.trim().isNotEmpty;
+  String? get _oobCode {
+    final oob = Get.parameters['oobCode']?.trim();
+    if (oob == null || oob.isEmpty) return null;
+    return oob;
   }
 
   void _onSubmit() {
-    if (_usesEmailLinkReset) {
-      _auth.setNewPassword(
-        _newPass.text,
-        _confirm.text,
-        oobCode: Get.parameters['oobCode'],
-      );
-    } else {
-      _otp.submitNewPassword(_newPass.text, _confirm.text);
-    }
+    _auth.setNewPassword(
+      _newPass.text,
+      _confirm.text,
+      oobCode: _oobCode,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final hasCode = _oobCode != null;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -79,9 +75,9 @@ class _CreatePasswordViewState extends State<CreatePasswordView> {
             ),
             const SizedBox(height: 8),
             Text(
-              _usesEmailLinkReset
+              hasCode
                   ? 'Choose a new password (min. 6 characters).'
-                  : 'Choose a new password (min. 8 characters for OTP reset).',
+                  : 'Open the reset link from your email first. If you are already signed in, you can change your password after logging in.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.75),
@@ -108,14 +104,11 @@ class _CreatePasswordViewState extends State<CreatePasswordView> {
               autofillHints: const [AutofillHints.newPassword],
             ),
             const SizedBox(height: 28),
-            Obx(() {
-              final loading = _auth.isLoading.value || _otp.isLoading.value;
-              return SignaraPrimaryButton(
-                label: 'Set Password',
-                isLoading: loading,
-                onPressed: _onSubmit,
-              );
-            }),
+            Obx(() => SignaraPrimaryButton(
+                  label: 'Set Password',
+                  isLoading: _auth.isLoading.value,
+                  onPressed: _onSubmit,
+                )),
           ],
         ),
       ),

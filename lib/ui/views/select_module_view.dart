@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 
 import '../../app/routes/app_routes.dart';
 import '../../core/theme/app_colors.dart';
+import '../controllers/auth_controller.dart';
 import '../controllers/dashboard_controller.dart';
 import '../widgets/signara_primary_button.dart';
 
@@ -77,6 +78,7 @@ class _ModuleOption {
 }
 
 /// Choose collar / vest / hip module before starting a session.
+/// Admin users see all 3 modules; regular users see only SIGNARA™ Collar.
 class SelectModuleView extends StatefulWidget {
   const SelectModuleView({super.key});
 
@@ -85,7 +87,7 @@ class SelectModuleView extends StatefulWidget {
 }
 
 class _SelectModuleViewState extends State<SelectModuleView> {
-  static const List<_ModuleOption> _modules = [
+  static const List<_ModuleOption> _allModules = [
     _ModuleOption(
       assetPath: 'assets/icons/signnara_ollar.png',
       title: 'SIGNARA™ Collar',
@@ -104,6 +106,35 @@ class _SelectModuleViewState extends State<SelectModuleView> {
   ];
 
   int _selectedIndex = 0;
+  bool _isAdmin = false;
+  Worker? _roleWorker;
+
+  @override
+  void initState() {
+    super.initState();
+    _initRole();
+  }
+
+  @override
+  void dispose() {
+    _roleWorker?.dispose();
+    super.dispose();
+  }
+
+  void _initRole() {
+    if (!Get.isRegistered<AuthController>()) return;
+    final auth = Get.find<AuthController>();
+    _isAdmin = auth.currentUser.value?.isAdmin ?? false;
+    _roleWorker = ever(auth.currentUser, (user) {
+      if (mounted) {
+        setState(() {
+          _isAdmin = user?.isAdmin ?? false;
+          final max = (_isAdmin ? _allModules.length : 1) - 1;
+          if (_selectedIndex > max) _selectedIndex = 0;
+        });
+      }
+    });
+  }
 
   String? get _dogIdFromRoute {
     final raw = Get.arguments;
@@ -114,8 +145,9 @@ class _SelectModuleViewState extends State<SelectModuleView> {
     return null;
   }
 
-  void _onStartSession() {
-    final m = _modules[_selectedIndex];
+  void _onStartSession(List<_ModuleOption> modules) {
+    final safeIndex = _selectedIndex.clamp(0, modules.length - 1);
+    final m = modules[safeIndex];
     if (!Get.isRegistered<DashboardController>()) {
       Get.snackbar(
         'Navigation',
@@ -165,132 +197,148 @@ class _SelectModuleViewState extends State<SelectModuleView> {
           children: [
             const _SelectModuleBackground(),
             SafeArea(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 4, 16, 0),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: IconButton(
-                        onPressed: () => Get.back<void>(),
-                        icon: const Icon(
-                          Icons.arrow_back_ios_new_rounded,
-                          color: Colors.white,
-                          size: 20,
+              child: Builder(
+                builder: (context) {
+                  final modules =
+                      _isAdmin ? _allModules : [_allModules.first];
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(8, 4, 16, 0),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: IconButton(
+                            onPressed: () => Get.back<void>(),
+                            icon: const Icon(
+                              Icons.arrow_back_ios_new_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Select Module',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Choose which device to use for this session',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.48),
-                            fontSize: 15,
-                            fontWeight: FontWeight.w400,
-                            height: 1.35,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
-                      itemCount: _modules.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 14),
-                      itemBuilder: (context, i) {
-                        final m = _modules[i];
-                        final selected = i == _selectedIndex;
-                        return GestureDetector(
-                          onTap: () => setState(() => _selectedIndex = i),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 180),
-                            curve: Curves.easeOut,
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1A1D1A),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: selected ? AppColors.signaraGold : Colors.transparent,
-                                width: selected ? 1.8 : 0,
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _isAdmin ? 'Select Module' : 'Module',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.3,
                               ),
                             ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Container(
-                                  width: 76,
-                                  height: 76,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF121412),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  alignment: Alignment.center,
-                                  padding: const EdgeInsets.all(6),
-                                  child: Image.asset(
-                                    m.assetPath,
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        m.title,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w700,
-                                          decoration: TextDecoration.none,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        m.subtitle,
-                                        style: TextStyle(
-                                          color: Colors.white.withValues(alpha: 0.52),
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w400,
-                                          height: 1.3,
-                                          decoration: TextDecoration.none,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
+                            const SizedBox(height: 8),
+                            Text(
+                              _isAdmin
+                                  ? 'Choose which device to use for this session'
+                                  : 'Which device to use for this session',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.48),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w400,
+                                height: 1.35,
+                              ),
                             ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                    child: SignaraPrimaryButton(
-                      label: 'Start Session',
-                      onPressed: _onStartSession,
-                    ),
-                  ),
-                ],
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+                          itemCount: modules.length,
+                          separatorBuilder: (_, _) =>
+                              const SizedBox(height: 14),
+                          itemBuilder: (context, i) {
+                            final m = modules[i];
+                            final selected = i == _selectedIndex;
+                            return GestureDetector(
+                              onTap: () =>
+                                  setState(() => _selectedIndex = i),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 180),
+                                curve: Curves.easeOut,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1A1D1A),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: selected
+                                        ? AppColors.signaraGold
+                                        : Colors.transparent,
+                                    width: selected ? 1.8 : 0,
+                                  ),
+                                ),
+                                child: Row(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      width: 76,
+                                      height: 76,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF121412),
+                                        borderRadius:
+                                            BorderRadius.circular(12),
+                                      ),
+                                      alignment: Alignment.center,
+                                      padding: const EdgeInsets.all(6),
+                                      child: Image.asset(
+                                        m.assetPath,
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            m.title,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w700,
+                                              decoration: TextDecoration.none,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            m.subtitle,
+                                            style: TextStyle(
+                                              color: Colors.white
+                                                  .withValues(alpha: 0.52),
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w400,
+                                              height: 1.3,
+                                              decoration: TextDecoration.none,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                        child: SignaraPrimaryButton(
+                          label: 'Start Session',
+                          onPressed: () => _onStartSession(modules),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           ],

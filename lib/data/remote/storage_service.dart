@@ -75,12 +75,16 @@ class StorageService {
     }
   }
 
+  /// Returns true only when the **bucket itself** does not exist so the caller
+  /// can retry against the legacy `.appspot.com` bucket.
+  ///
+  /// `object-not-found` / code -13010 means the resumable-upload session was
+  /// invalidated on the server (often because an App Check placeholder token
+  /// was rejected). That is NOT a missing-bucket error and must not trigger a
+  /// fallback, otherwise the app spins up a second failing upload to an
+  /// `.appspot.com` bucket that may not exist at all.
   static bool _isStorageBucketNotFound(FirebaseException e) {
-    final c = e.code.toLowerCase();
-    final m = '${e.message}'.toLowerCase();
-    return c.contains('object-not-found') ||
-        (c == 'unknown' && m.contains('404')) ||
-        m.contains('not found');
+    return e.code.toLowerCase() == 'bucket-not-found';
   }
 
   Future<String> uploadUserAvatar({

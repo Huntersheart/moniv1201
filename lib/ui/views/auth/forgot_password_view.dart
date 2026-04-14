@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
-import '../../controllers/password_reset_otp_controller.dart';
+import '../../controllers/auth_controller.dart';
 import '../../widgets/signara_centered_screen_body.dart';
 import '../../widgets/signara_primary_button.dart';
 import '../../widgets/signara_text_field.dart';
@@ -16,13 +16,12 @@ class ForgotPasswordView extends StatefulWidget {
 
 class _ForgotPasswordViewState extends State<ForgotPasswordView> {
   final _email = TextEditingController();
-  late final PasswordResetOtpController _otp;
+  late final AuthController _auth;
 
   @override
   void initState() {
     super.initState();
-    _otp = Get.find<PasswordResetOtpController>();
-    _otp.clearFlow();
+    _auth = Get.find<AuthController>();
   }
 
   @override
@@ -55,7 +54,7 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Enter your email. We\'ll send a 6-digit code to reset your password.',
+              'Enter your email. We\'ll send a link to reset your password.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.92),
@@ -74,9 +73,9 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
             ),
             const SizedBox(height: 20),
             Obx(() => SignaraPrimaryButton(
-                  label: 'Send code',
-                  isLoading: _otp.isLoading.value,
-                  onPressed: () => _otp.sendOtp(_email.text),
+                  label: 'Send reset link',
+                  isLoading: _auth.isLoading.value,
+                  onPressed: () => _auth.sendPasswordReset(_email.text),
                 )),
           ],
         ),

@@ -3,7 +3,6 @@ abstract final class AppRoutes {
   static const String onboarding = '/onboarding';
   static const String login = '/login';
   static const String forgotPassword = '/forgot-password';
-  static const String verifyCode = '/verify-code';
   static const String createPassword = '/create-password';
   static const String home = '/home';
   static const String addDog = '/add-dog';

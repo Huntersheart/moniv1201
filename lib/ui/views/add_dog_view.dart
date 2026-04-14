@@ -262,10 +262,14 @@ class AddDogView extends GetView<AddDogController> {
                       ),
                     ),
                     const SizedBox(height: 28),
-                    SignaraPrimaryButton(
-                      label: 'Save Dog Profile',
-                      onPressed: controller.saveProfile,
+                    Obx(
+                      () => SignaraPrimaryButton(
+                        label: 'Save Dog Profile',
+                        isLoading: controller.isLoading.value,
+                        onPressed: controller.saveProfile,
+                      ),
                     ),
+
                   ],
                 ),
               ),

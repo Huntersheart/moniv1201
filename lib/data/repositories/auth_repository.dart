@@ -158,6 +158,7 @@ class AuthRepository {
           createdAt: now,
           updatedAt: now,
           lastLoginAt: now,
+          role: 'pioneer',
         );
         await docRef.set(model.toMap());
         return model;

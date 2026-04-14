@@ -44,14 +44,5 @@ service cloud.firestore {
       allow create: if isSignedIn() &&
         request.resource.data.userId == request.auth.uid;
     }
-
-    // OTP + reset sessions — Cloud Functions (Admin SDK) only. Never from the app client.
-    match /password_reset_otps/{docId} {
-      allow read, write: if false;
-    }
-
-    match /password_reset_sessions/{docId} {
-      allow read, write: if false;
-    }
   }
 }

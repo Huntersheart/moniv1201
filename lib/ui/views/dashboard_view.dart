@@ -492,6 +492,7 @@ class _DashboardHomeTab extends StatelessWidget {
 
   static const Color _movementGreen = Color(0xFF66BB6A);
   static const Color _comfortPurple = Color(0xFFBA68C8);
+  static const Color _emptyStateGrey = Color(0xFF808080);
 
   @override
   Widget build(BuildContext context) {
@@ -500,37 +501,47 @@ class _DashboardHomeTab extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              const Expanded(
-                child: Text(
-                  'Select Dog',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
+          if (dogs.isEmpty)
+            const Text(
+              'Select Dog',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+              ),
+            )
+          else
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Select Dog',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
-              ),
-              TextButton(
-                onPressed: onSeeAllDogs,
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.signaraGold,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: const Text(
-                  'See all',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
+                TextButton(
+                  onPressed: onSeeAllDogs,
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.signaraGold,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text(
+                    'See all',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
           const SizedBox(height: 6),
           Text(
             'Choose which dog to work with',
@@ -541,18 +552,23 @@ class _DashboardHomeTab extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          if (dogs.isEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Text(
-                'No dogs yet. Tap Add Dog to get started.',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.45),
-                  fontSize: 14,
-                ),
+          if (dogs.isEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              'No dogs added yet.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: _emptyStateGrey,
+                fontSize: 15,
+                fontWeight: FontWeight.w400,
               ),
-            )
-          else
+            ),
+            const SizedBox(height: 20),
+            SignaraPrimaryButton(
+              label: 'Add Your First Dog',
+              onPressed: () => onAddDog(),
+            ),
+          ] else ...[
             ...List.generate(dogs.length, (i) {
               final d = dogs[i];
               final selected = i == selectedDogIndex;
@@ -567,23 +583,24 @@ class _DashboardHomeTab extends StatelessWidget {
                 ),
               );
             }),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: onAddDog,
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.signaraGold,
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: const Text(
-                'Add Dog',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => onAddDog(),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.signaraGold,
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text(
+                  'Add Dog',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                ),
               ),
             ),
-          ),
+          ],
           const SizedBox(height: 20),
           // SignaraPrimaryButton(
           //   label: 'Start Session',
@@ -637,12 +654,16 @@ class _DashboardHomeTab extends StatelessWidget {
           const SizedBox(height: 16),
           if (sessions.isEmpty)
             Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                'No sessions yet.',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.45),
-                  fontSize: 14,
+              padding: const EdgeInsets.only(top: 24),
+              child: Center(
+                child: Text(
+                  'No Session yet.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: _emptyStateGrey,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
               ),
             )

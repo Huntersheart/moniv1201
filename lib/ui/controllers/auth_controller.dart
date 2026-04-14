@@ -18,9 +18,6 @@ class AuthController extends GetxController {
   final isLoading = false.obs;
   final Rxn<UserModel> currentUser = Rxn<UserModel>();
 
-  String _pendingEmail = '';
-  String get pendingEmail => _pendingEmail;
-
   StreamSubscription<String>? _fcmTokenSub;
 
   @override
@@ -101,6 +98,7 @@ class AuthController extends GetxController {
     }
   }
 
+  /// Firebase Auth built-in reset email (link in inbox → opens app with `oobCode`).
   Future<void> sendPasswordReset(String email) async {
     if (email.trim().isEmpty) {
       _snack('Validation', 'Please enter your email address.');
@@ -114,30 +112,11 @@ class AuthController extends GetxController {
     isLoading.value = true;
     try {
       await _repo.sendPasswordResetEmail(email);
-      _pendingEmail = email.trim();
-      Get.toNamed(AppRoutes.verifyCode);
-      _snack('Email Sent', 'Check your inbox for the reset link.');
-    } catch (e) {
-      _snack('Error', _friendlyError(e));
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  Future<void> resendPasswordResetEmail() async {
-    if (_pendingEmail.isEmpty) {
-      _snack('Error', 'No email on file. Go back and enter your email.');
-      return;
-    }
-    if (!FirebaseService.isInitialized) {
-      _snack('Not Configured',
-          'Firebase is not set up yet. Run: flutterfire configure');
-      return;
-    }
-    isLoading.value = true;
-    try {
-      await _repo.sendPasswordResetEmail(_pendingEmail);
-      _snack('Email Sent', 'Check your inbox for the reset link.');
+      _snack(
+        'Email sent',
+        'Check your inbox and tap the link to set a new password.',
+      );
+      Get.offAllNamed(AppRoutes.login);
     } catch (e) {
       _snack('Error', _friendlyError(e));
     } finally {
