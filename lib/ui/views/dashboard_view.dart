@@ -8,6 +8,7 @@ import '../../app/routes/app_routes.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/dog_model.dart';
 import '../../data/models/session_model.dart';
+import '../../data/models/user_model.dart';
 import '../../data/repositories/dog_repository.dart';
 import '../../ui/controllers/auth_controller.dart';
 import '../../ui/controllers/dashboard_controller.dart';
@@ -159,15 +160,17 @@ class _DashboardViewState extends State<DashboardView> {
   int _tabIndex = 0;
 
   late final DashboardController _ctrl;
+  late final AuthController _authCtrl;
 
   @override
   void initState() {
     super.initState();
     _ctrl = Get.find<DashboardController>();
+    _authCtrl = Get.find<AuthController>();
   }
 
   void _logout() {
-    Get.find<AuthController>().logout();
+    _authCtrl.logout();
   }
 
   Future<void> _openAddDog() async {
@@ -229,7 +232,7 @@ class _DashboardViewState extends State<DashboardView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _Header(onLogout: _logout),
+                  _Header(onLogout: _logout, authCtrl: _authCtrl),
                   Expanded(
                     child: Obx(() {
                       final dogs = _ctrl.dogs
@@ -359,10 +362,13 @@ class _DashboardViewState extends State<DashboardView> {
   }
 }
 
+/// Dashboard header — uses [StreamBuilder] for live user display-name/email
+/// from `users/{uid}` in Firestore.
 class _Header extends StatelessWidget {
-  const _Header({required this.onLogout});
+  const _Header({required this.onLogout, required this.authCtrl});
 
   final VoidCallback onLogout;
+  final AuthController authCtrl;
 
   @override
   Widget build(BuildContext context) {
@@ -372,16 +378,45 @@ class _Header extends StatelessWidget {
         children: [
           const SignaraBrandLogoMark(size: 40),
           const SizedBox(width: 10),
-          const Text(
-            'Hunter Hearts',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -0.2,
+          Expanded(
+            child: StreamBuilder<UserModel?>(
+              stream: authCtrl.userProfileStream,
+              builder: (context, snap) {
+                final user = snap.data;
+                final name = (user?.displayName.isNotEmpty == true)
+                    ? user!.displayName
+                    : (user?.email.isNotEmpty == true
+                        ? user!.email.split('@').first
+                        : 'Hunter Hearts');
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Hunter Hearts',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    if (user != null)
+                      Text(
+                        name,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.6),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w400,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                  ],
+                );
+              },
             ),
           ),
-          const Spacer(),
           IconButton(
             onPressed: onLogout,
             icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 24),

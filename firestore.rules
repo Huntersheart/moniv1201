@@ -2,47 +2,118 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isUser(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
     }
 
-    // Profile doc at users/{userId}
+    // Reads the caller's own profile to check the role field.
+    // Uses .get() with a default so it never throws if the doc is missing.
+    function isAdmin() {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid))
+             .data.get('role', 'pioneer') == 'admin';
+    }
+
+    // True when the incoming write does NOT change the 'role' field.
+    function roleUnchanged(current) {
+      return request.resource.data.get('role', 'pioneer')
+          == current.data.get('role', 'pioneer');
+    }
+
+    // ── User profiles ─────────────────────────────────────────────────────────
+    // Path: users/{userId}
+    //
+    //  • Any user reads their own profile; admin reads any profile.
+    //  • On create a user may set role = 'pioneer' only (or omit it).
+    //  • On update a user may change any field EXCEPT role; admin may change everything.
+    //  • Only admin may delete a profile.
     match /users/{userId} {
-      allow read, write: if isUser(userId);
+      allow read:
+        if isOwner(userId) || isAdmin();
+
+      allow create:
+        if isOwner(userId)
+           && request.resource.data.get('role', 'pioneer') != 'admin'
+        || isAdmin();
+
+      allow update:
+        if isOwner(userId) && roleUnchanged(resource)
+        || isAdmin();
+
+      allow delete:
+        if isAdmin();
     }
 
-    // Subcollections (e.g. dogs) and deeper paths under that user.
-    match /users/{userId}/{document=**} {
-      allow read, write: if isUser(userId);
+    // ── Dogs (user sub-collection) ────────────────────────────────────────────
+    // Path: users/{userId}/dogs/{dogId}
+    //
+    //  • Owner and admin have full access.
+    //  • Other signed-in users are denied (Firestore path already scopes this).
+    match /users/{userId}/dogs/{dogId} {
+      allow read, write:
+        if isOwner(userId) || isAdmin();
     }
 
+    // Also covers any deeper paths under a user document (devices, etc.).
+    match /users/{userId}/{everything=**} {
+      allow read, write:
+        if isOwner(userId) || isAdmin();
+    }
+
+    // ── Sessions ──────────────────────────────────────────────────────────────
+    // Path: sessions/{sessionId}
+    //
+    //  • A user reads/updates/deletes only their own sessions; admin reads all.
+    //  • On create the caller's uid must match the userId field being written.
     match /sessions/{sessionId} {
-      allow read: if isSignedIn() &&
-        resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn() &&
-        request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isSignedIn() &&
-        resource.data.userId == request.auth.uid;
+      allow read:
+        if isSignedIn()
+           && (resource.data.userId == request.auth.uid || isAdmin());
+
+      allow create:
+        if isSignedIn()
+           && request.resource.data.userId == request.auth.uid;
+
+      allow update:
+        if isSignedIn()
+           && (resource.data.userId == request.auth.uid || isAdmin());
+
+      allow delete:
+        if isSignedIn()
+           && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
+    // ── Devices ───────────────────────────────────────────────────────────────
     match /devices/{deviceId} {
-      allow read: if isSignedIn() &&
-        resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() &&
-        request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isSignedIn() &&
-        resource.data.ownerId == request.auth.uid;
+      allow read:
+        if isSignedIn()
+           && (resource.data.ownerId == request.auth.uid || isAdmin());
+
+      allow create:
+        if isSignedIn()
+           && request.resource.data.ownerId == request.auth.uid;
+
+      allow update, delete:
+        if isSignedIn()
+           && (resource.data.ownerId == request.auth.uid || isAdmin());
     }
 
+    // ── Notifications ─────────────────────────────────────────────────────────
     match /notifications/{notificationId} {
-      allow read, update, delete: if isSignedIn() &&
-        resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn() &&
-        request.resource.data.userId == request.auth.uid;
+      allow read, update, delete:
+        if isSignedIn()
+           && (resource.data.userId == request.auth.uid || isAdmin());
+
+      allow create:
+        if isSignedIn()
+           && request.resource.data.userId == request.auth.uid;
     }
   }
 }

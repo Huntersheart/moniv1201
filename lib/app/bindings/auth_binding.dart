@@ -7,12 +7,19 @@ import '../../ui/controllers/auth_controller.dart';
 class AuthBinding extends Bindings {
   @override
   void dependencies() {
-    Get.lazyPut<AuthService>(() => AuthService());
-    Get.lazyPut<AuthRepository>(
-      () => AuthRepository(Get.find<AuthService>()),
-    );
-    Get.lazyPut<AuthController>(
-      () => AuthController(Get.find<AuthRepository>()),
-    );
+    // [InitialBinding] may already have registered these globally — never duplicate.
+    if (!Get.isRegistered<AuthService>()) {
+      Get.lazyPut<AuthService>(() => AuthService());
+    }
+    if (!Get.isRegistered<AuthRepository>()) {
+      Get.lazyPut<AuthRepository>(
+        () => AuthRepository(Get.find<AuthService>()),
+      );
+    }
+    if (!Get.isRegistered<AuthController>()) {
+      Get.lazyPut<AuthController>(
+        () => AuthController(Get.find<AuthRepository>()),
+      );
+    }
   }
 }

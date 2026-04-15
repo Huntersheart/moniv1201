@@ -13,8 +13,9 @@ import 'auth_controller.dart';
 class DashboardController extends GetxController {
   final DogRepository _dogRepo;
   final SessionRepository _sessionRepo;
+  final AuthController _auth;
 
-  DashboardController(this._dogRepo, this._sessionRepo);
+  DashboardController(this._dogRepo, this._sessionRepo, this._auth);
 
   final dogs = <DogModel>[].obs;
   /// Completed sessions from Firestore (newest first, capped in [SessionRepository]).
@@ -32,15 +33,17 @@ class DashboardController extends GetxController {
   static const Duration _sessionRetryDelay = Duration(seconds: 10);
 
   /// Must match [FirebaseAuth] so Firestore rules (`request.auth.uid`) align with paths/queries.
+  /// Uses the injected [_auth] instead of [Get.find] so this never throws during logout /
+  /// route teardown when [AuthController] may already be removed from GetX.
   String get _userId =>
       FirebaseAuth.instance.currentUser?.uid ??
-      Get.find<AuthController>().currentUser.value?.uid ??
+      _auth.currentUser.value?.uid ??
       '';
 
   @override
   void onInit() {
     super.onInit();
-    ever(Get.find<AuthController>().currentUser, (_) => _startListening());
+    ever(_auth.currentUser, (_) => _startListening());
     _startListening();
   }
 
@@ -107,6 +110,20 @@ class DashboardController extends GetxController {
     return s.contains('index') ||
         s.contains('building') ||
         s.contains('composite');
+  }
+
+  /// Raw Firestore stream for dogs — use with [StreamBuilder] for live UI.
+  Stream<List<DogModel>> get dogsStream {
+    final uid = _userId;
+    if (uid.isEmpty) return const Stream.empty();
+    return _dogRepo.watchDogs(uid);
+  }
+
+  /// Raw Firestore stream for completed sessions — use with [StreamBuilder].
+  Stream<List<SessionModel>> get sessionsStream {
+    final uid = _userId;
+    if (uid.isEmpty) return const Stream.empty();
+    return _sessionRepo.watchUserSessions(uid);
   }
 
   void selectDog(int index) => selectedDogIndex.value = index;

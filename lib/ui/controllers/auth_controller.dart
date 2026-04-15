@@ -6,7 +6,6 @@ import 'package:get/get.dart';
 
 import '../../app/routes/app_routes.dart';
 import '../../data/models/user_model.dart';
-import '../../data/remote/fcm_service.dart';
 import '../../data/remote/firebase_service.dart';
 import '../../data/repositories/auth_repository.dart';
 
@@ -18,7 +17,7 @@ class AuthController extends GetxController {
   final isLoading = false.obs;
   final Rxn<UserModel> currentUser = Rxn<UserModel>();
 
-  StreamSubscription<String>? _fcmTokenSub;
+  StreamSubscription<UserModel?>? _profileSub;
 
   @override
   void onInit() {
@@ -26,6 +25,10 @@ class AuthController extends GetxController {
     try {
       _repo.authStateChanges.listen((firebaseUser) async {
         if (firebaseUser != null) {
+          // Force a token refresh so subsequent Firestore calls pass auth rules.
+          try {
+            await firebaseUser.getIdToken();
+          } catch (_) {}
           try {
             final profile = await _repo.getCurrentUserProfile();
             currentUser.value =
@@ -34,13 +37,19 @@ class AuthController extends GetxController {
             debugPrint('[Auth] Firestore profile sync failed: $e\n$st');
             currentUser.value = _repo.fallbackUserFromAuth(firebaseUser);
           }
-          try {
-            await _registerPushForUser(firebaseUser.uid);
-          } catch (e, st) {
-            debugPrint('[Auth] FCM registration failed: $e\n$st');
-          }
+          // Subscribe to live Firestore profile so any change in `users/{uid}`
+          // is reflected in the app instantly.
+          _profileSub?.cancel();
+          _profileSub = _repo.watchUserProfile(firebaseUser.uid).listen(
+            (profile) {
+              if (profile != null) currentUser.value = profile;
+            },
+            onError: (Object e) =>
+                debugPrint('[Auth] live profile error: $e'),
+          );
         } else {
-          _cancelPushRegistration();
+          _profileSub?.cancel();
+          _profileSub = null;
           currentUser.value = null;
         }
       });
@@ -49,31 +58,18 @@ class AuthController extends GetxController {
     }
   }
 
+  /// Live Firestore stream for the current user's profile document.
+  /// Use with [StreamBuilder] anywhere you need real-time user data.
+  Stream<UserModel?> get userProfileStream {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || uid.isEmpty) return const Stream.empty();
+    return _repo.watchUserProfile(uid);
+  }
+
   @override
   void onClose() {
-    _cancelPushRegistration();
+    _profileSub?.cancel();
     super.onClose();
-  }
-
-  Future<void> _registerPushForUser(String uid) async {
-    if (!FirebaseService.isInitialized) return;
-    if (!Get.isRegistered<FcmService>()) return;
-    _fcmTokenSub?.cancel();
-    final fcm = Get.find<FcmService>();
-    final token = await fcm.initialize();
-    if (token != null && token.isNotEmpty) {
-      await _repo.updateFcmToken(uid, token);
-    }
-    _fcmTokenSub = fcm.tokenRefreshStream.listen((t) {
-      if (t.isNotEmpty) {
-        _repo.updateFcmToken(uid, t);
-      }
-    });
-  }
-
-  void _cancelPushRegistration() {
-    _fcmTokenSub?.cancel();
-    _fcmTokenSub = null;
   }
 
   Future<void> login({required String email, required String password}) async {
@@ -98,7 +94,6 @@ class AuthController extends GetxController {
     }
   }
 
-  /// Firebase Auth built-in reset email (link in inbox → opens app with `oobCode`).
   Future<void> sendPasswordReset(String email) async {
     if (email.trim().isEmpty) {
       _snack('Validation', 'Please enter your email address.');
@@ -181,7 +176,8 @@ class AuthController extends GetxController {
   }
 
   Future<void> logout() async {
-    _cancelPushRegistration();
+    _profileSub?.cancel();
+    _profileSub = null;
     await _repo.signOut();
     currentUser.value = null;
     Get.offAllNamed(AppRoutes.login);

@@ -22,6 +22,7 @@ class SessionLiveController extends GetxController {
   final elapsedSeconds = 0.obs;
   Timer? _timer;
   Timer? _firestoreSyncTimer;
+  StreamSubscription<SessionModel?>? _sessionSub;
   bool _bootstrapped = false;
 
   final hapticOn = true.obs;
@@ -54,10 +55,19 @@ class SessionLiveController extends GetxController {
         '${s.toString().padLeft(2, '0')}';
   }
 
+  /// Live Firestore stream for the active session document.
+  /// Use with [StreamBuilder] to reflect any server-side changes instantly.
+  Stream<SessionModel?> get sessionStream {
+    final id = activeSession.value?.sessionId;
+    if (id == null || id.isEmpty) return const Stream.empty();
+    return _sessionRepo.watchSession(id);
+  }
+
   @override
   void onClose() {
     _timer?.cancel();
     _firestoreSyncTimer?.cancel();
+    _sessionSub?.cancel();
     noteController.dispose();
     _bootstrapped = false;
     super.onClose();
@@ -82,6 +92,25 @@ class SessionLiveController extends GetxController {
     }
     final doc = await _dogRepo.getDog(userId: userId, dogId: dogId);
     return doc?.name ?? '';
+  }
+
+  /// Subscribes to live Firestore updates for the active session document.
+  /// This means if the session is updated from another device or by an admin,
+  /// the changes reflect instantly in the UI without waiting for the sync timer.
+  void _startSessionWatch(String sessionId) {
+    _sessionSub?.cancel();
+    _sessionSub = _sessionRepo.watchSession(sessionId).listen(
+      (session) {
+        if (session != null) activeSession.value = session;
+      },
+      onError: (Object e) =>
+          debugPrint('[SessionLive] Firestore session watch: $e'),
+    );
+  }
+
+  void _stopSessionWatch() {
+    _sessionSub?.cancel();
+    _sessionSub = null;
   }
 
   void _startFirestoreSyncTimer() {
@@ -157,6 +186,7 @@ class SessionLiveController extends GetxController {
 
   Future<void> abandonSession() async {
     _stopFirestoreSyncTimer();
+    _stopSessionWatch();
     _timer?.cancel();
     final session = activeSession.value;
     if (session != null && session.status == 'active') {
@@ -203,6 +233,7 @@ class SessionLiveController extends GetxController {
       activeSession.value = await _sessionRepo.createSession(session);
       _startTimer();
       _startFirestoreSyncTimer();
+      _startSessionWatch(activeSession.value!.sessionId);
       unawaited(_pushActiveProgressToFirestore());
     } catch (e) {
       debugPrint('[SessionLive] start error: $e');
@@ -223,6 +254,7 @@ class SessionLiveController extends GetxController {
 
   Future<void> endSession() async {
     _stopFirestoreSyncTimer();
+    _stopSessionWatch();
     _timer?.cancel();
     final session = activeSession.value;
     if (session == null) {

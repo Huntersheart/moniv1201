@@ -92,6 +92,15 @@ class AuthRepository {
     await _authService.signOut();
   }
 
+  /// Real-time Firestore stream for the authenticated user's profile document.
+  /// Every time `users/{uid}` changes in Firestore the app rebuilds automatically.
+  Stream<UserModel?> watchUserProfile(String uid) {
+    return _users.doc(uid).snapshots().map((doc) {
+      if (!doc.exists || doc.data() == null) return null;
+      return UserModel.fromMap(doc.data()!).copyWith(uid: uid);
+    });
+  }
+
   /// When Firestore is temporarily unavailable, returns null (use [fallbackUserFromAuth]).
   Future<UserModel?> getCurrentUserProfile() async {
     final user = _authService.currentUser;
@@ -119,18 +128,14 @@ class AuthRepository {
     );
   }
 
+  /// Updates a user's own profile fields. Uses [UserModel.toMapForSelfUpdate]
+  /// which intentionally excludes the `role` field, so a regular user can never
+  /// overwrite their role. Firestore rules enforce the same constraint server-side.
   Future<void> updateUserProfile(UserModel model) async {
     await _users.doc(model.uid).set(
-          model.copyWith(updatedAt: DateTime.now()).toMap(),
+          model.copyWith(updatedAt: DateTime.now()).toMapForSelfUpdate(),
           SetOptions(merge: true),
         );
-  }
-
-  Future<void> updateFcmToken(String uid, String token) async {
-    await _users.doc(uid).set(
-      {'fcmToken': token, 'updatedAt': Timestamp.now()},
-      SetOptions(merge: true),
-    );
   }
 
   Future<UserModel> _getOrCreateUserDoc(User firebaseUser) async {
@@ -147,8 +152,11 @@ class AuthRepository {
             displayName: firebaseUser.displayName ?? existing.displayName,
             updatedAt: now,
             lastLoginAt: now,
+            // Preserve the role already stored in Firestore — never overwrite it.
+            role: existing.role,
           );
-          await docRef.set(merged.toMap(), SetOptions(merge: true));
+          // Use toMapForSelfUpdate so the 'role' field is never touched by the app.
+          await docRef.set(merged.toMapForSelfUpdate(), SetOptions(merge: true));
           return merged;
         }
         final model = UserModel(

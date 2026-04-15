@@ -6,7 +6,6 @@ class UserModel {
   final String displayName;
   final String phoneNumber;
   final String avatarUrl;
-  final String fcmToken;
   final bool isOnboardingComplete;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -28,7 +27,6 @@ class UserModel {
     this.displayName = '',
     this.phoneNumber = '',
     this.avatarUrl = '',
-    this.fcmToken = '',
     this.isOnboardingComplete = false,
     required this.createdAt,
     required this.updatedAt,
@@ -43,7 +41,6 @@ class UserModel {
       displayName: map['displayName'] as String? ?? '',
       phoneNumber: map['phoneNumber'] as String? ?? '',
       avatarUrl: map['avatarUrl'] as String? ?? '',
-      fcmToken: map['fcmToken'] as String? ?? '',
       isOnboardingComplete: map['isOnboardingComplete'] as bool? ?? false,
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (map['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -52,6 +49,7 @@ class UserModel {
     );
   }
 
+  /// Full map — used internally (e.g. admin writes, initial account creation).
   Map<String, dynamic> toMap() {
     return {
       'uid': uid,
@@ -59,7 +57,6 @@ class UserModel {
       'displayName': displayName,
       'phoneNumber': phoneNumber,
       'avatarUrl': avatarUrl,
-      'fcmToken': fcmToken,
       'isOnboardingComplete': isOnboardingComplete,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
@@ -69,13 +66,28 @@ class UserModel {
     };
   }
 
+  /// Safe map for regular user self-updates — intentionally excludes `role`
+  /// so a user can never accidentally overwrite the role field in Firestore.
+  Map<String, dynamic> toMapForSelfUpdate() {
+    return {
+      'uid': uid,
+      'email': email,
+      'displayName': displayName,
+      'phoneNumber': phoneNumber,
+      'avatarUrl': avatarUrl,
+      'isOnboardingComplete': isOnboardingComplete,
+      'updatedAt': Timestamp.fromDate(updatedAt),
+      if (lastLoginAt != null)
+        'lastLoginAt': Timestamp.fromDate(lastLoginAt!),
+    };
+  }
+
   UserModel copyWith({
     String? uid,
     String? email,
     String? displayName,
     String? phoneNumber,
     String? avatarUrl,
-    String? fcmToken,
     bool? isOnboardingComplete,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -88,7 +100,6 @@ class UserModel {
       displayName: displayName ?? this.displayName,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       avatarUrl: avatarUrl ?? this.avatarUrl,
-      fcmToken: fcmToken ?? this.fcmToken,
       isOnboardingComplete: isOnboardingComplete ?? this.isOnboardingComplete,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
