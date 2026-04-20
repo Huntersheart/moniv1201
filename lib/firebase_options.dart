@@ -63,7 +63,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '190818522498',
     projectId: 'hunters-heart',
     storageBucket: 'hunters-heart.firebasestorage.app',
-    iosBundleId: 'com.example.slgnaraCollar',
+    iosBundleId: 'com.signaracollar.app',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
@@ -72,7 +72,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '190818522498',
     projectId: 'hunters-heart',
     storageBucket: 'hunters-heart.firebasestorage.app',
-    iosBundleId: 'com.example.slgnaraCollar',
+    iosBundleId: 'com.signaracollar.app',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(

@@ -2,6 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CLIENT_ID</key>
+	<string>190818522498-0afig5f0m6e6gmr3cmtbeq2oo673sp1c.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.190818522498-0afig5f0m6e6gmr3cmtbeq2oo673sp1c</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>190818522498-rlaufl22c8bkb47sjoi1dn0p44vohdi5.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
 	<string>AIzaSyDxf9G8YS9rNJX_5mDMS7HRMYzsmvfd5BQ</string>
 	<key>GCM_SENDER_ID</key>
@@ -9,7 +15,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.example.slgnaraCollar</string>
+	<string>com.signaracollar.app</string>
 	<key>PROJECT_ID</key>
 	<string>hunters-heart</string>
 	<key>STORAGE_BUCKET</key>

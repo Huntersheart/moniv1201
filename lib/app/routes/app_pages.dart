@@ -12,6 +12,7 @@ import '../bindings/splash_binding.dart';
 import '../../ui/views/auth/create_password_view.dart';
 import '../../ui/views/auth/forgot_password_view.dart';
 import '../../ui/views/auth/login_view.dart';
+import '../../ui/views/auth/register_view.dart';
 import '../../ui/views/add_dog_view.dart';
 import '../../ui/views/select_module_view.dart';
 import '../../ui/views/session_live_view.dart';
@@ -36,6 +37,11 @@ abstract final class AppPages {
     GetPage(
       name: AppRoutes.login,
       page: LoginView.new,
+      binding: AuthBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.register,
+      page: RegisterView.new,
       binding: AuthBinding(),
     ),
     GetPage(

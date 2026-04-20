@@ -15,6 +15,12 @@ class AuthController extends GetxController {
   AuthController(this._repo);
 
   final isLoading = false.obs;
+  /// Email/password login only — so Google button does not show a spinner.
+  final isEmailLoginLoading = false.obs;
+  /// Google sign-in only — so Login button does not show a spinner.
+  final isGoogleLoginLoading = false.obs;
+  /// Email/password registration only.
+  final isRegisterLoading = false.obs;
   final Rxn<UserModel> currentUser = Rxn<UserModel>();
 
   StreamSubscription<UserModel?>? _profileSub;
@@ -72,6 +78,45 @@ class AuthController extends GetxController {
     super.onClose();
   }
 
+  /// Creates the account, signs out immediately, then the UI shows success and
+  /// routes to login so the user signs in explicitly.
+  Future<bool> register({
+    required String email,
+    required String password,
+    required String confirmPassword,
+  }) async {
+    final trimmed = email.trim();
+    if (trimmed.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+      _snack('Validation', 'Email and both password fields are required.');
+      return false;
+    }
+    if (password != confirmPassword) {
+      _snack('Validation', 'Passwords do not match.');
+      return false;
+    }
+    if (password.length < 6) {
+      _snack('Validation', 'Password must be at least 6 characters.');
+      return false;
+    }
+    if (!FirebaseService.isInitialized) {
+      _snack('Not Configured',
+          'Firebase is not set up yet. Run: flutterfire configure');
+      return false;
+    }
+    isRegisterLoading.value = true;
+    try {
+      await _repo.signUp(email: trimmed, password: password);
+      await _repo.signOut();
+      currentUser.value = null;
+      return true;
+    } catch (e) {
+      _snack('Registration Failed', _friendlyError(e));
+      return false;
+    } finally {
+      isRegisterLoading.value = false;
+    }
+  }
+
   Future<void> login({required String email, required String password}) async {
     if (email.trim().isEmpty || password.isEmpty) {
       _snack('Validation', 'Email and password are required.');
@@ -82,7 +127,7 @@ class AuthController extends GetxController {
           'Firebase is not set up yet. Run: flutterfire configure');
       return;
     }
-    isLoading.value = true;
+    isEmailLoginLoading.value = true;
     try {
       final user = await _repo.signIn(email: email, password: password);
       currentUser.value = user;
@@ -90,7 +135,27 @@ class AuthController extends GetxController {
     } catch (e) {
       _snack('Login Failed', _friendlyError(e));
     } finally {
-      isLoading.value = false;
+      isEmailLoginLoading.value = false;
+    }
+  }
+
+  Future<void> loginWithGoogle() async {
+    if (!FirebaseService.isInitialized) {
+      _snack('Not Configured',
+          'Firebase is not set up yet. Run: flutterfire configure');
+      return;
+    }
+    isGoogleLoginLoading.value = true;
+    try {
+      final user = await _repo.signInWithGoogle();
+      currentUser.value = user;
+      Get.offAllNamed(AppRoutes.home);
+    } catch (e) {
+      final msg = e.toString();
+      if (msg.contains('cancelled')) return;
+      _snack('Google Sign-In Failed', _friendlyError(e));
+    } finally {
+      isGoogleLoginLoading.value = false;
     }
   }
 

@@ -9,10 +9,23 @@
       "client_info": {
         "mobilesdk_app_id": "1:190818522498:android:5848f182ee623f347beb9b",
         "android_client_info": {
-          "package_name": "com.example.slgnara_collar"
+          "package_name": "com.signaracollar.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "190818522498-rlaufl22c8bkb47sjoi1dn0p44vohdi5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.signaracollar.app",
+            "certificate_hash": "d35eaca8a8c4cbc90c09fec7afb261b4462232ee"
+          }
+        },
+        {
+          "client_id": "190818522498-3egrqo7rekd7ng66anov896b9isr2oc3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCp3QtjPp9D8QBsRevNp0RbT789bb34nIQ"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "190818522498-3egrqo7rekd7ng66anov896b9isr2oc3.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "190818522498-0afig5f0m6e6gmr3cmtbeq2oo673sp1c.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.slgnaraCollar"
+              }
+            }
+          ]
         }
       }
     }

@@ -70,6 +70,11 @@ class AuthRepository {
     return _getOrCreateUserDoc(credential.user!);
   }
 
+  Future<UserModel> signInWithGoogle() async {
+    final credential = await _authService.signInWithGoogle();
+    return _getOrCreateUserDoc(credential.user!);
+  }
+
   Future<void> sendPasswordResetEmail(String email) async {
     await _authService.sendPasswordResetEmail(email);
   }

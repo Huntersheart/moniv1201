@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 
@@ -18,8 +20,12 @@ Future<void> main() async {
   await FirebaseService.initialize();
   if (FirebaseService.isInitialized) {
     try {
-      final initial = await AppLinks().getInitialLink();
+      final initial = await AppLinks()
+          .getInitialLink()
+          .timeout(const Duration(seconds: 5));
       _capturePasswordResetFromUri(initial);
+    } on TimeoutException {
+      // Avoid blocking launch if the platform never completes the initial link.
     } catch (_) {}
   }
   runApp(const App());

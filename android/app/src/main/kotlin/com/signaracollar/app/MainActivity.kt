@@ -1,4 +1,4 @@
-package com.example.slgnara_collar
+package com.signaracollar.app
 
 import io.flutter.embedding.android.FlutterActivity
 
