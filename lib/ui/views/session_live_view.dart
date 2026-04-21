@@ -575,9 +575,9 @@ class _SessionLogCard extends StatelessWidget {
             color: _kMovement,
             value: movement,
             onChanged: onMovement,
-            low: '1(Low)',
-            mid: '2(Normal)',
-            high: '3(High)',
+            low: '1 Very low',
+            mid: '5 Normal',
+            high: '10 Very high',
           ),
           const Divider(height: 28, color: Colors.white12),
           _MetricSlider(
@@ -586,9 +586,9 @@ class _SessionLogCard extends StatelessWidget {
             color: _kComfort,
             value: comfort,
             onChanged: onComfort,
-            low: '1(Extremely)',
-            mid: '2(Stable)',
-            high: '3(Moderate)',
+            low: '1 Very uncomfortable',
+            mid: '5 Stable',
+            high: '10 Very comfortable',
           ),
           const Divider(height: 28, color: Colors.white12),
           _MetricSlider(
@@ -597,9 +597,9 @@ class _SessionLogCard extends StatelessWidget {
             color: _kEnergy,
             value: energy,
             onChanged: onEnergy,
-            low: '1(Low)',
-            mid: '2(Normal)',
-            high: '3(High)',
+            low: '1 Very low',
+            mid: '5 Normal',
+            high: '10 Very high',
           ),
         ],
       ),
@@ -630,7 +630,7 @@ class _MetricSlider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final v = value.clamp(1.0, 3.0);
+    final v = value.clamp(1.0, 10.0);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -657,7 +657,7 @@ class _MetricSlider extends StatelessWidget {
             ),
             const Spacer(),
             Text(
-              v.round().toString(),
+              '${v.round()}/10',
               style: TextStyle(color: color, fontWeight: FontWeight.w800),
             ),
           ],
@@ -672,8 +672,8 @@ class _MetricSlider extends StatelessWidget {
           child: Slider(
             value: v,
             min: 1,
-            max: 3,
-            divisions: 2,
+            max: 10,
+            divisions: 9,
             onChanged: onChanged,
           ),
         ),
@@ -691,8 +691,9 @@ class _MetricSlider extends StatelessWidget {
 
   static final TextStyle _cap = TextStyle(
     color: Colors.white.withValues(alpha: 0.4),
-    fontSize: 10,
+    fontSize: 9,
     decoration: TextDecoration.none,
+    height: 1.2,
   );
 }
 
@@ -752,12 +753,12 @@ class _ResponseCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'How did the dog respond to haptic feedback?',
+            'Immediate observed response after haptic activation.',
             style: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 13),
           ),
           const SizedBox(height: 12),
           _RadioRow(
-            label: 'No change',
+            label: 'No improvement',
             selected: value == 0,
             onTap: () => onChanged(0),
           ),
@@ -767,7 +768,7 @@ class _ResponseCard extends StatelessWidget {
             onTap: () => onChanged(1),
           ),
           _RadioRow(
-            label: 'Good improvement',
+            label: 'Clear improvement',
             selected: value == 2,
             onTap: () => onChanged(2),
           ),
@@ -822,7 +823,7 @@ class _CalmingCard extends StatelessWidget {
   final int value;
   final ValueChanged<int> onChanged;
 
-  static const _labels = ['None', 'Slight', 'Moderate', 'Strong', 'Very Strong'];
+  static const _labels = ['None', 'Minimal', 'Moderate', 'Good', 'Strong'];
 
   @override
   Widget build(BuildContext context) {
@@ -831,12 +832,12 @@ class _CalmingCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
-            'Calming Effect',
+            'Overall Calming Effect',
             style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 4),
           Text(
-            'Rate the effect with Signara (1-5)',
+            'Overall calming effect during the full session (1–5).',
             style: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 13),
           ),
           const SizedBox(height: 14),
@@ -866,8 +867,8 @@ class _CalmingCard extends StatelessWidget {
                             ),
                             child: Text(
                               '$n',
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: sel ? Colors.black : Colors.white,
                                 fontWeight: FontWeight.w800,
                                 fontSize: 16,
                                 decoration: TextDecoration.none,

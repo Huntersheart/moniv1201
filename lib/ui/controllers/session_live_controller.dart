@@ -29,9 +29,9 @@ class SessionLiveController extends GetxController {
   final hapticPresetIndex = 0.obs;
   final intensity = 3.0.obs;
 
-  final movement = 3.0.obs;
-  final comfort = 3.0.obs;
-  final energy = 3.0.obs;
+  final movement = 5.0.obs;
+  final comfort = 5.0.obs;
+  final energy = 5.0.obs;
 
   final limpLevel = 0.obs;
   final responseLevel = 0.obs;

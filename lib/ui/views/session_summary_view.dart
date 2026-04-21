@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
+import '../../app/routes/app_routes.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/session_model.dart';
 import '../controllers/session_summary_controller.dart';
@@ -66,8 +67,28 @@ class SessionSummaryView extends GetView<SessionSummaryController> {
                     ),
                     Expanded(
                       child: SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
                         child: _SummaryContent(session: s),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: FilledButton(
+                          onPressed: () => Get.offAllNamed<void>(AppRoutes.home),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.signaraGold,
+                            foregroundColor: Colors.black,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          ),
+                          child: const Text(
+                            'Back to Dashboard',
+                            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, decoration: TextDecoration.none),
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -154,7 +175,7 @@ class _SummaryContent extends StatelessWidget {
                   Expanded(
                     child: _labelValue(
                       label: 'Device',
-                      value: s.deviceLabel,
+                      value: s.deviceDisplayName,
                       valueColor: _valueGreen,
                     ),
                   ),
@@ -184,8 +205,8 @@ class _SummaryContent extends StatelessWidget {
                 children: [
                   Expanded(
                     child: _labelValue(
-                      label: 'Module',
-                      value: _moduleTypeLabel(s.moduleType),
+                      label: 'Session Type',
+                      value: s.sessionTypeDisplay,
                       valueColor: _valueGreen,
                     ),
                   ),
@@ -200,13 +221,13 @@ class _SummaryContent extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               _labelValue(
-                label: 'Calming Level',
-                value: '${s.calmingLevel}/5',
+                label: 'Overall Calming Effect',
+                value: '${s.calmingEffectDisplayLabel} (${s.calmingLevel}/5)',
                 valueColor: AppColors.signaraGold,
               ),
               const SizedBox(height: 14),
               _labelValue(
-                label: 'Response',
+                label: 'Response to Haptic',
                 value: s.responseDisplayLabel,
                 valueColor: _valueGreen,
               ),
@@ -225,7 +246,7 @@ class _SummaryContent extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Text(
-                'Average',
+                'Session Scores',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
@@ -327,22 +348,6 @@ class _SummaryContent extends StatelessWidget {
     );
   }
 
-  static String _moduleTypeLabel(String moduleType) {
-    switch (moduleType) {
-      case 'collar':
-        return 'Collar';
-      case 'vest':
-        return 'Vest';
-      case 'hip':
-        return 'Hip';
-      case 'training':
-        return 'Training';
-      default:
-        if (moduleType.isEmpty) return '—';
-        return '${moduleType[0].toUpperCase()}${moduleType.substring(1)}';
-    }
-  }
-
   Widget _cardBox({required Widget child}) {
     return Container(
       padding: const EdgeInsets.all(18),
@@ -408,7 +413,7 @@ class _SummaryContent extends StatelessWidget {
               ),
             ),
             Text(
-              '$value',
+              '$value/10',
               style: TextStyle(
                 color: color,
                 fontWeight: FontWeight.w800,

@@ -478,7 +478,7 @@ class _SessionRow {
   });
 
   factory _SessionRow.fromModel(SessionModel m) => _SessionRow(
-        sessionLabel: 'Session Type: ${m.deviceLabel}',
+        sessionLabel: 'Session Type: ${m.sessionTypeDisplay}',
         dateLine: 'Date: ${m.dateDisplay}',
         duration: m.durationDisplay,
         movement: m.movementScore10,
@@ -1090,9 +1090,17 @@ class _DogSelectCard extends StatelessWidget {
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    _DogStatInline(label: 'Age', value: data.age),
-                    _DogStatInline(label: 'Weight', value: data.weight),
-                    _DogStatInline(label: 'Gender', value: data.gender),
+                    Flexible(
+                      child: _DogStatInline(label: 'Age', value: data.age),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: _DogStatInline(label: 'Weight', value: data.weight),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: _DogStatInline(label: 'Gender', value: data.gender),
+                    ),
                   ],
                 ),
               ],
@@ -1113,34 +1121,32 @@ class _DogStatInline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: RichText(
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        text: TextSpan(
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            height: 1.2,
-            decoration: TextDecoration.none,
-            decorationThickness: 0,
-          ),
-          children: [
-            TextSpan(
-              text: '$label: ',
-              style: const TextStyle(decoration: TextDecoration.none),
-            ),
-            TextSpan(
-              text: value,
-              style: const TextStyle(
-                color: AppColors.signaraGold,
-                fontWeight: FontWeight.w700,
-                decoration: TextDecoration.none,
-              ),
-            ),
-          ],
+    return RichText(
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      text: TextSpan(
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          height: 1.2,
+          decoration: TextDecoration.none,
+          decorationThickness: 0,
         ),
+        children: [
+          TextSpan(
+            text: '$label: ',
+            style: const TextStyle(decoration: TextDecoration.none),
+          ),
+          TextSpan(
+            text: value,
+            style: const TextStyle(
+              color: AppColors.signaraGold,
+              fontWeight: FontWeight.w700,
+              decoration: TextDecoration.none,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1298,13 +1304,7 @@ class _DogDetailDialogContent extends StatelessWidget {
                       icon: const Icon(Icons.close_rounded, color: Colors.white, size: 24),
                     ),
                     const Spacer(),
-                    IconButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        Get.find<DashboardController>().deleteDog(d);
-                      },
-                      icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFE57373), size: 26),
-                    ),
+                    _DeleteDogIconButton(dog: d),
                   ],
                 ),
                 Center(
@@ -1367,6 +1367,8 @@ class _DogDetailDialogContent extends StatelessWidget {
                 ],
                 const SizedBox(height: 14),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     _DogStatInline(label: 'Age', value: d.ageDisplay),
                     _DogStatInline(label: 'Weight', value: d.weightDisplay),
@@ -1476,6 +1478,97 @@ class _DogDetailDialogContent extends StatelessWidget {
 
   static String _formatDate(DateTime dt) {
     return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+  }
+}
+
+/// Tappable delete icon inside the dog-detail dialog.
+/// Shows a confirm dialog, then deletes the dog document from Firestore
+/// via [DashboardController.deleteDog] and closes the detail dialog.
+class _DeleteDogIconButton extends StatelessWidget {
+  const _DeleteDogIconButton({required this.dog});
+
+  final DogModel dog;
+
+  Future<void> _confirmAndDelete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF2A2A2A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Delete dog?',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        content: Text(
+          'This will permanently remove "${dog.name}" and its profile from your account. '
+          'This action cannot be undone.',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.82),
+            fontSize: 15,
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.75)),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'Delete',
+              style: TextStyle(
+                color: Color(0xFFE57373),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+    if (!context.mounted) return;
+
+    Navigator.of(context).pop();
+    await Get.find<DashboardController>().deleteDog(dog);
+
+    Get.snackbar(
+      'Dog deleted',
+      '"${dog.name}" has been removed.',
+      snackPosition: SnackPosition.BOTTOM,
+      margin: const EdgeInsets.all(16),
+      backgroundColor: const Color(0xFF2A2A2A),
+      colorText: Colors.white,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _confirmAndDelete(context),
+        borderRadius: BorderRadius.circular(24),
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Image.asset(
+            'assets/icons/delete_icon.png',
+            width: 22,
+            height: 22,
+            fit: BoxFit.contain,
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -1603,7 +1696,7 @@ class _MetricChip extends StatelessWidget {
           children: [
             TextSpan(text: '$label: '),
             TextSpan(
-              text: '$value',
+              text: '$value/10',
               style: TextStyle(
                 color: valueColor,
                 fontWeight: FontWeight.w800,

@@ -54,6 +54,7 @@ class SessionRepository {
       'status': 'completed',
       'endTime': Timestamp.fromDate(now),
       'durationSeconds': durationSeconds,
+      'metricsOneToTen': true,
       'movement': movement,
       'comfort': comfort,
       'energy': energy,
@@ -150,6 +151,7 @@ class SessionRepository {
     await _sessions.doc(sessionId).set(
       {
         'durationSeconds': durationSeconds,
+        'metricsOneToTen': true,
         'movement': movement,
         'comfort': comfort,
         'energy': energy,

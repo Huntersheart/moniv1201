@@ -17,6 +17,8 @@ class SessionModel {
   final double movement;
   final double comfort;
   final double energy;
+  /// New sessions store Movement/Comfort/Energy on **1–10**; older docs used **1–3**.
+  final bool metricsOneToTen;
   final int limpLevel;
   final int responseLevel;
   final int calmingLevel;
@@ -41,9 +43,10 @@ class SessionModel {
     required this.startTime,
     this.endTime,
     this.durationSeconds = 0,
-    this.movement = 3,
-    this.comfort = 3,
-    this.energy = 3,
+    this.movement = 5,
+    this.comfort = 5,
+    this.energy = 5,
+    this.metricsOneToTen = true,
     this.limpLevel = 0,
     this.responseLevel = 0,
     this.calmingLevel = 3,
@@ -74,14 +77,20 @@ class SessionModel {
     return '${months[d.month - 1]} ${d.day}, ${d.year}';
   }
 
-  /// Session log sliders store **1–3**; summary UI uses **0–10**.
-  int get movementScore10 => _metric1to3To10(movement);
-  int get comfortScore10 => _metric1to3To10(comfort);
-  int get energyScore10 => _metric1to3To10(energy);
+  /// Display values for Movement / Comfort / Energy — always **1–10**, matching session log.
+  int get movementScore10 => _metricDisplay10(movement);
+  int get comfortScore10 => _metricDisplay10(comfort);
+  int get energyScore10 => _metricDisplay10(energy);
 
-  static int _metric1to3To10(double v) {
+  int _metricDisplay10(double v) {
+    if (metricsOneToTen) {
+      return v.round().clamp(1, 10);
+    }
+    // Legacy Firestore: 1–3 scale → align to same anchors as old summary (1→1, 2→5, 3→10).
     final c = v.clamp(1.0, 3.0);
-    return (((c - 1) / 2) * 10).round().clamp(0, 10);
+    if (c <= 1.0) return 1;
+    if (c >= 3.0) return 10;
+    return 5;
   }
 
   /// Haptic intensity stored **1–3** → display as **/10** on summary.
@@ -95,9 +104,53 @@ class SessionModel {
       case 1:
         return 'Slight improvement';
       case 2:
-        return 'Good improvement';
+        return 'Clear improvement';
       default:
-        return 'No change';
+        return 'No improvement';
+    }
+  }
+
+  /// Overall Calming Effect (1–5): None … Strong.
+  String get calmingEffectDisplayLabel {
+    switch (calmingLevel.clamp(1, 5)) {
+      case 1:
+        return 'None';
+      case 2:
+        return 'Minimal';
+      case 3:
+        return 'Moderate';
+      case 4:
+        return 'Good';
+      case 5:
+        return 'Strong';
+      default:
+        return '—';
+    }
+  }
+
+  /// Session summary: device line (collar builds use SIGNARA™ Collar).
+  String get deviceDisplayName {
+    final t = moduleType.toLowerCase();
+    if (t == 'collar') return 'SIGNARA™ Collar';
+    final d = deviceLabel.trim();
+    if (d.isNotEmpty) return d;
+    return '—';
+  }
+
+  /// Session summary: e.g. "Collar Session", "Vest Session".
+  String get sessionTypeDisplay {
+    switch (moduleType.toLowerCase()) {
+      case 'collar':
+        return 'Collar Session';
+      case 'vest':
+        return 'Vest Session';
+      case 'hip':
+        return 'Hip Session';
+      case 'training':
+        return 'Training Session';
+      default:
+        if (moduleType.isEmpty) return 'Session';
+        return '${moduleType[0].toUpperCase()}${moduleType.substring(1)} Session';
     }
   }
 
@@ -116,9 +169,10 @@ class SessionModel {
       startTime: (map['startTime'] as Timestamp?)?.toDate() ?? DateTime.now(),
       endTime: (map['endTime'] as Timestamp?)?.toDate(),
       durationSeconds: map['durationSeconds'] as int? ?? 0,
-      movement: (map['movement'] as num?)?.toDouble() ?? 3,
-      comfort: (map['comfort'] as num?)?.toDouble() ?? 3,
-      energy: (map['energy'] as num?)?.toDouble() ?? 3,
+      movement: (map['movement'] as num?)?.toDouble() ?? 5,
+      comfort: (map['comfort'] as num?)?.toDouble() ?? 5,
+      energy: (map['energy'] as num?)?.toDouble() ?? 5,
+      metricsOneToTen: map['metricsOneToTen'] as bool? ?? false,
       limpLevel: map['limpLevel'] as int? ?? 0,
       responseLevel: map['responseLevel'] as int? ?? 0,
       calmingLevel: map['calmingLevel'] as int? ?? 3,
@@ -148,6 +202,7 @@ class SessionModel {
       'movement': movement,
       'comfort': comfort,
       'energy': energy,
+      'metricsOneToTen': metricsOneToTen,
       'limpLevel': limpLevel,
       'responseLevel': responseLevel,
       'calmingLevel': calmingLevel,
@@ -176,6 +231,7 @@ class SessionModel {
     double? movement,
     double? comfort,
     double? energy,
+    bool? metricsOneToTen,
     int? limpLevel,
     int? responseLevel,
     int? calmingLevel,
@@ -202,6 +258,7 @@ class SessionModel {
       movement: movement ?? this.movement,
       comfort: comfort ?? this.comfort,
       energy: energy ?? this.energy,
+      metricsOneToTen: metricsOneToTen ?? this.metricsOneToTen,
       limpLevel: limpLevel ?? this.limpLevel,
       responseLevel: responseLevel ?? this.responseLevel,
       calmingLevel: calmingLevel ?? this.calmingLevel,
