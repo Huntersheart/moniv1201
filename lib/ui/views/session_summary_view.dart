@@ -138,6 +138,7 @@ class _SummaryContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = session;
+    final hideHaptic = s.isVestOrHipModule;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -182,24 +183,31 @@ class _SummaryContent extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: _labelValue(
-                      label: 'Haptic Control',
-                      value: s.hapticPreset,
-                      valueColor: _valueGreen,
+              if (!hideHaptic)
+                Row(
+                  children: [
+                    Expanded(
+                      child: _labelValue(
+                        label: 'Haptic Control',
+                        value: s.hapticPreset,
+                        valueColor: _valueGreen,
+                      ),
                     ),
-                  ),
-                  Expanded(
-                    child: _labelValue(
-                      label: 'Intensity',
-                      value: '${s.intensityScore10}/10',
-                      valueColor: _valueGreen,
+                    Expanded(
+                      child: _labelValue(
+                        label: 'Intensity',
+                        value: '${s.intensityScore10}/10',
+                        valueColor: _valueGreen,
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                )
+              else
+                _labelValue(
+                  label: 'Intensity',
+                  value: '${s.intensityScore10}/10',
+                  valueColor: _valueGreen,
+                ),
               const SizedBox(height: 16),
               Row(
                 children: [
@@ -219,18 +227,20 @@ class _SummaryContent extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              _labelValue(
-                label: 'Overall Calming Effect',
-                value: '${s.calmingEffectDisplayLabel} (${s.calmingLevel}/5)',
-                valueColor: AppColors.signaraGold,
-              ),
-              const SizedBox(height: 14),
-              _labelValue(
-                label: 'Response to Haptic',
-                value: s.responseDisplayLabel,
-                valueColor: _valueGreen,
-              ),
+              if (!hideHaptic) ...[
+                const SizedBox(height: 16),
+                _labelValue(
+                  label: 'Overall Calming Effect',
+                  value: '${s.calmingEffectDisplayLabel} (${s.calmingLevel}/5)',
+                  valueColor: AppColors.signaraGold,
+                ),
+                const SizedBox(height: 14),
+                _labelValue(
+                  label: 'Response to Haptic',
+                  value: s.responseDisplayLabel,
+                  valueColor: _valueGreen,
+                ),
+              ],
               const SizedBox(height: 8),
               _labelValue(
                 label: 'Limp',

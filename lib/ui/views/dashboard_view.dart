@@ -148,7 +148,7 @@ class _GestureNavTab extends StatelessWidget {
   }
 }
 
-/// Hunter Hearts main shell — header, **Dashboard** tab (Select Dog + Recent Sessions), bottom nav.
+/// Hunter's Heart main shell — header, **Dashboard** tab (Select Dog + Recent Sessions), bottom nav.
 class DashboardView extends StatefulWidget {
   const DashboardView({super.key});
 
@@ -387,14 +387,17 @@ class _Header extends StatelessWidget {
                     ? user!.displayName
                     : (user?.email.isNotEmpty == true
                         ? user!.email.split('@').first
-                        : 'Hunter Hearts');
+                        : "Hunter's Heart");
+                final brandTitle = (user?.isAdmin ?? false)
+                    ? "Hunter's Heart · Admin"
+                    : "Hunter's Heart";
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
-                      'Hunter Hearts',
-                      style: TextStyle(
+                    Text(
+                      brandTitle,
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 17,
                         fontWeight: FontWeight.w600,

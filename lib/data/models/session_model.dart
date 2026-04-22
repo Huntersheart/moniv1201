@@ -128,6 +128,12 @@ class SessionModel {
     }
   }
 
+  /// Vest/Hip omit haptic questionnaire fields in session UI and summary.
+  bool get isVestOrHipModule {
+    final t = moduleType.toLowerCase();
+    return t == 'vest' || t == 'hip';
+  }
+
   /// Session summary: device line (collar builds use SIGNARA™ Collar).
   String get deviceDisplayName {
     final t = moduleType.toLowerCase();

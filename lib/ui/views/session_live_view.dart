@@ -71,6 +71,18 @@ class _SessionLiveViewState extends State<SessionLiveView> {
     return 'SIGNARA™ Collar';
   }
 
+  /// Vest/Hip: hide haptic + "Response to Haptic" + "Overall Calming Effect" (per product spec).
+  bool _hideHapticQuestionnaire(SessionLiveController c) {
+    final s = c.activeSession.value;
+    if (s != null) return s.isVestOrHipModule;
+    final args = Get.arguments;
+    if (args is Map && args['moduleTitle'] is String) {
+      final t = (args['moduleTitle'] as String).toLowerCase();
+      return t.contains('vest') || t.contains('hip');
+    }
+    return false;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -130,6 +142,8 @@ class _SessionLiveViewState extends State<SessionLiveView> {
                   Expanded(
                     child: Obx(() {
                       _c.elapsedSeconds.value;
+                      _c.activeSession.value;
+                      final hideHaptic = _hideHapticQuestionnaire(_c);
                       final dog = Get.isRegistered<DashboardController>()
                           ? Get.find<DashboardController>().selectedDog
                           : null;
@@ -145,15 +159,17 @@ class _SessionLiveViewState extends State<SessionLiveView> {
                               ageLine: 'Age: ${dog?.ageDisplay ?? '—'}',
                               photoUrl: dog?.photoUrl,
                             ),
-                            const SizedBox(height: 16),
-                            _HapticCard(
-                              hapticOn: _c.hapticOn.value,
-                              onHapticChanged: (v) => _c.hapticOn.value = v,
-                              preset: _c.hapticPresetIndex.value,
-                              onPreset: (i) => _c.hapticPresetIndex.value = i,
-                              intensity: _c.intensity.value,
-                              onIntensity: (v) => _c.intensity.value = v,
-                            ),
+                            if (!hideHaptic) ...[
+                              const SizedBox(height: 16),
+                              _HapticCard(
+                                hapticOn: _c.hapticOn.value,
+                                onHapticChanged: (v) => _c.hapticOn.value = v,
+                                preset: _c.hapticPresetIndex.value,
+                                onPreset: (i) => _c.hapticPresetIndex.value = i,
+                                intensity: _c.intensity.value,
+                                onIntensity: (v) => _c.intensity.value = v,
+                              ),
+                            ],
                             const SizedBox(height: 22),
                             const Text(
                               'Session Log',
@@ -178,16 +194,18 @@ class _SessionLiveViewState extends State<SessionLiveView> {
                               value: _c.limpLevel.value,
                               onChanged: (v) => _c.limpLevel.value = v,
                             ),
-                            const SizedBox(height: 14),
-                            _ResponseCard(
-                              value: _c.responseLevel.value,
-                              onChanged: (v) => _c.responseLevel.value = v,
-                            ),
-                            const SizedBox(height: 14),
-                            _CalmingCard(
-                              value: _c.calmingLevel.value,
-                              onChanged: (v) => _c.calmingLevel.value = v,
-                            ),
+                            if (!hideHaptic) ...[
+                              const SizedBox(height: 14),
+                              _ResponseCard(
+                                value: _c.responseLevel.value,
+                                onChanged: (v) => _c.responseLevel.value = v,
+                              ),
+                              const SizedBox(height: 14),
+                              _CalmingCard(
+                                value: _c.calmingLevel.value,
+                                onChanged: (v) => _c.calmingLevel.value = v,
+                              ),
+                            ],
                             const SizedBox(height: 14),
                             _NotesUploadCard(controller: _c.noteController),
                             const SizedBox(height: 24),
