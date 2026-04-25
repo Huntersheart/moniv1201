@@ -12,6 +12,7 @@ import '../../data/models/user_model.dart';
 import '../../data/repositories/dog_repository.dart';
 import '../../ui/controllers/auth_controller.dart';
 import '../../ui/controllers/dashboard_controller.dart';
+import '../../ui/controllers/session_live_controller.dart';
 import '../widgets/signara_dashboard_background.dart';
 import '../widgets/signara_logo_mark.dart';
 import '../widgets/signara_primary_button.dart';
@@ -1195,6 +1196,29 @@ class _DogDetailDialogScaffold extends StatelessWidget {
   }
 }
 
+/// Pops the surrounding dog-detail [showGeneralDialog] when the document is gone (live delete).
+class _AutoCloseWhenDogGone extends StatefulWidget {
+  const _AutoCloseWhenDogGone();
+
+  @override
+  State<_AutoCloseWhenDogGone> createState() => _AutoCloseWhenDogGoneState();
+}
+
+class _AutoCloseWhenDogGoneState extends State<_AutoCloseWhenDogGone> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).maybePop();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
+}
+
 /// Full dog profile from Firestore `users/{uid}/dogs/{dogId}` (live stream).
 class _DogDetailDialogContent extends StatelessWidget {
   const _DogDetailDialogContent({required this.initialDog});
@@ -1249,31 +1273,10 @@ class _DogDetailDialogContent extends StatelessWidget {
       builder: (context, snapshot) {
         final d = snapshot.data;
         if (d == null) {
-          return Material(
+          return const Material(
             color: Colors.transparent,
             type: MaterialType.transparency,
-            child: Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: const Color(0xFF151815),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: AppColors.signaraGold.withValues(alpha: 0.7)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Dog profile unavailable',
-                    style: _dialogTextBase.copyWith(color: Colors.white70),
-                  ),
-                  const SizedBox(height: 12),
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Close'),
-                  ),
-                ],
-              ),
-            ),
+            child: _AutoCloseWhenDogGone(),
           );
         }
 
@@ -1496,6 +1499,7 @@ class _DeleteDogIconButton extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       barrierDismissible: true,
+      useRootNavigator: true,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF2A2A2A),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -1541,7 +1545,19 @@ class _DeleteDogIconButton extends StatelessWidget {
     if (confirmed != true) return;
     if (!context.mounted) return;
 
-    Navigator.of(context).pop();
+    if (Get.isRegistered<SessionLiveController>()) {
+      final sl = Get.find<SessionLiveController>();
+      final s = sl.activeSession.value;
+      if (s != null && s.dogId == dog.dogId && s.status == 'active') {
+        await sl.abandonSession();
+        if (Get.currentRoute == AppRoutes.sessionLive) {
+          Get.back<void>();
+        }
+      }
+    }
+
+    if (!context.mounted) return;
+    Navigator.of(context, rootNavigator: true).pop();
     await Get.find<DashboardController>().deleteDog(dog);
 
     Get.snackbar(

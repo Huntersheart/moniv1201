@@ -139,10 +139,11 @@ class AddDogController extends GetxController {
       if (isEditing) {
         var photoUrl = existing.photoUrl;
         if (profileImage.value != null) {
+          final bytes = await profileImage.value!.readAsBytes();
           photoUrl = await _storageService.uploadDogPhoto(
             userId: uid,
             dogId: existing.dogId,
-            filePath: profileImage.value!.path,
+            imageBytes: bytes,
           );
         }
         final dog = DogModel(
@@ -182,10 +183,11 @@ class AddDogController extends GetxController {
         );
         var created = await _dogRepo.addDog(dog);
         if (profileImage.value != null) {
+          final bytes = await profileImage.value!.readAsBytes();
           final photoUrl = await _storageService.uploadDogPhoto(
             userId: uid,
             dogId: created.dogId,
-            filePath: profileImage.value!.path,
+            imageBytes: bytes,
           );
           await _dogRepo.updateDog(created.copyWith(photoUrl: photoUrl));
         }
@@ -201,7 +203,28 @@ class AddDogController extends GetxController {
         backgroundColor: const Color(0xFF2A2A2A),
         colorText: Colors.white,
       );
+    } on FirebaseException catch (e) {
+      debugPrint('$e');
+      final code = e.code.toLowerCase();
+      final message = e.message?.toLowerCase() ?? '';
+      String uiMessage = 'Could not save profile. Check your connection.';
+      if (code == 'unauthorized') {
+        uiMessage =
+            'Storage permission denied. Check Firebase Storage rules and sign-in.';
+      } else if (code == 'unknown' && message.contains('cannot parse response')) {
+        uiMessage =
+            'iOS upload response error. Please try again or use a smaller image.';
+      }
+      Get.snackbar(
+        'Error',
+        uiMessage,
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(16),
+        backgroundColor: const Color(0xFF2A2A2A),
+        colorText: Colors.white,
+      );
     } catch (e) {
+      debugPrint('$e');
       Get.snackbar(
         'Error',
         'Could not save profile. Check your connection.',

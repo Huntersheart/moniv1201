@@ -23,17 +23,20 @@ class AuthController extends GetxController {
   final isRegisterLoading = false.obs;
   final Rxn<UserModel> currentUser = Rxn<UserModel>();
 
+  StreamSubscription<User?>? _authStateSub;
   StreamSubscription<UserModel?>? _profileSub;
+  bool _isRecoveringProfilePermission = false;
 
   @override
   void onInit() {
     super.onInit();
     try {
-      _repo.authStateChanges.listen((firebaseUser) async {
+      _authStateSub?.cancel();
+      _authStateSub = _repo.authStateChanges.listen((firebaseUser) async {
         if (firebaseUser != null) {
           // Force a token refresh so subsequent Firestore calls pass auth rules.
           try {
-            await firebaseUser.getIdToken();
+            await firebaseUser.getIdToken(true);
           } catch (_) {}
           try {
             final profile = await _repo.getCurrentUserProfile();
@@ -50,8 +53,12 @@ class AuthController extends GetxController {
             (profile) {
               if (profile != null) currentUser.value = profile;
             },
-            onError: (Object e) =>
-                debugPrint('[Auth] live profile error: $e'),
+            onError: (Object e) {
+              debugPrint('[Auth] live profile error: $e');
+              if (_isPermissionDenied(e)) {
+                _recoverProfileStreamAfterPermissionDenied(firebaseUser);
+              }
+            },
           );
         } else {
           _profileSub?.cancel();
@@ -74,8 +81,34 @@ class AuthController extends GetxController {
 
   @override
   void onClose() {
+    _authStateSub?.cancel();
     _profileSub?.cancel();
     super.onClose();
+  }
+
+  bool _isPermissionDenied(Object e) =>
+      e.toString().toLowerCase().contains('permission-denied');
+
+  void _recoverProfileStreamAfterPermissionDenied(User firebaseUser) {
+    if (_isRecoveringProfilePermission) return;
+    _isRecoveringProfilePermission = true;
+    Future<void>(() async {
+      try {
+        await firebaseUser.getIdToken(true);
+      } catch (_) {
+        return;
+      } finally {
+        _isRecoveringProfilePermission = false;
+      }
+      if (FirebaseAuth.instance.currentUser?.uid != firebaseUser.uid) return;
+      _profileSub?.cancel();
+      _profileSub = _repo.watchUserProfile(firebaseUser.uid).listen(
+        (profile) {
+          if (profile != null) currentUser.value = profile;
+        },
+        onError: (Object e) => debugPrint('[Auth] live profile retry error: $e'),
+      );
+    });
   }
 
   /// Creates the account, signs out immediately, then the UI shows success and

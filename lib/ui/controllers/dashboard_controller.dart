@@ -28,17 +28,14 @@ class DashboardController extends GetxController {
   int _sessionRetryAttempt = 0;
   bool _sessionIndexSnackShown = false;
   String? _sessionsListenUid;
+  bool _isRecoveringPermission = false;
 
   static const int _maxSessionRetries = 40;
   static const Duration _sessionRetryDelay = Duration(seconds: 10);
 
-  /// Must match [FirebaseAuth] so Firestore rules (`request.auth.uid`) align with paths/queries.
-  /// Uses the injected [_auth] instead of [Get.find] so this never throws during logout /
-  /// route teardown when [AuthController] may already be removed from GetX.
-  String get _userId =>
-      FirebaseAuth.instance.currentUser?.uid ??
-      _auth.currentUser.value?.uid ??
-      '';
+  /// Must come from FirebaseAuth only; this is what Firestore rules evaluate
+  /// as request.auth.uid.
+  String get _userId => FirebaseAuth.instance.currentUser?.uid ?? '';
 
   @override
   void onInit() {
@@ -49,7 +46,19 @@ class DashboardController extends GetxController {
 
   void _startListening() {
     final uid = _userId;
-    if (uid.isEmpty) return;
+    if (uid.isEmpty) {
+      _dogSub?.cancel();
+      _dogSub = null;
+      _sessionSub?.cancel();
+      _sessionSub = null;
+      _sessionRetryTimer?.cancel();
+      _sessionRetryTimer = null;
+      _sessionsListenUid = null;
+      dogs.clear();
+      completedSessions.clear();
+      selectedDogIndex.value = 0;
+      return;
+    }
 
     if (_sessionsListenUid != uid) {
       _sessionsListenUid = uid;
@@ -62,8 +71,23 @@ class DashboardController extends GetxController {
     _sessionRetryTimer?.cancel();
 
     _dogSub = _dogRepo.watchDogs(uid).listen(
-          (list) => dogs.value = list,
-          onError: (Object e) => debugPrint('[Dashboard] dog error: $e'),
+          (list) {
+            dogs.value = list;
+            if (list.isEmpty) {
+              selectedDogIndex.value = 0;
+            } else if (selectedDogIndex.value >= list.length) {
+              selectedDogIndex.value = list.length - 1;
+            }
+          },
+          onError: (Object e) {
+            debugPrint('[Dashboard] dog error: $e');
+            if (_isPermissionDenied(e)) {
+              dogs.clear();
+              _dogSub?.cancel();
+              _dogSub = null;
+              _recoverAfterPermissionDenied(uid);
+            }
+          },
         );
 
     _listenUserSessions(uid);
@@ -79,6 +103,13 @@ class DashboardController extends GetxController {
       },
       onError: (Object e) {
         debugPrint('[Dashboard] session error: $e');
+        if (_isPermissionDenied(e)) {
+          completedSessions.clear();
+          _sessionSub?.cancel();
+          _sessionSub = null;
+          _recoverAfterPermissionDenied(uid);
+          return;
+        }
         if (!_isFirestoreSessionsIndexBlocked(e)) return;
         if (!_sessionIndexSnackShown) {
           _sessionIndexSnackShown = true;
@@ -112,6 +143,30 @@ class DashboardController extends GetxController {
         s.contains('composite');
   }
 
+  static bool _isPermissionDenied(Object e) {
+    final s = e.toString().toLowerCase();
+    return s.contains('permission-denied');
+  }
+
+  void _recoverAfterPermissionDenied(String uid) {
+    if (_isRecoveringPermission) return;
+    _isRecoveringPermission = true;
+    Future<void>(() async {
+      try {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user == null || user.uid != uid) return;
+        await user.getIdToken(true);
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+      } catch (_) {
+        return;
+      } finally {
+        _isRecoveringPermission = false;
+      }
+      if (_userId != uid || uid.isEmpty) return;
+      _startListening();
+    });
+  }
+
   /// Raw Firestore stream for dogs — use with [StreamBuilder] for live UI.
   Stream<List<DogModel>> get dogsStream {
     final uid = _userId;
@@ -138,9 +193,7 @@ class DashboardController extends GetxController {
     if (uid.isEmpty) return;
     try {
       await _dogRepo.deleteDog(userId: uid, dogId: dog.dogId);
-      if (selectedDogIndex.value >= dogs.length && dogs.isNotEmpty) {
-        selectedDogIndex.value = dogs.length - 1;
-      }
+      // Stream listener updates [dogs] and clamps [selectedDogIndex] after delete.
     } catch (e) {
       Get.snackbar(
         'Error',

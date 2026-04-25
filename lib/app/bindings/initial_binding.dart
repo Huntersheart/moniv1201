@@ -24,10 +24,12 @@ class InitialBinding extends Bindings {
     Get.lazyPut<DeviceRepository>(() => DeviceRepository(), fenix: true);
     Get.lazyPut<SessionRepository>(() => SessionRepository(), fenix: true);
 
-    // Global controllers
-    Get.lazyPut<AuthController>(
-      () => AuthController(Get.find<AuthRepository>()),
-      fenix: true,
-    );
+    // Global controller
+    if (!Get.isRegistered<AuthController>()) {
+      Get.put<AuthController>(
+        AuthController(Get.find<AuthRepository>()),
+        permanent: true,
+      );
+    }
   }
 }

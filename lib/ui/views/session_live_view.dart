@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -207,7 +209,7 @@ class _SessionLiveViewState extends State<SessionLiveView> {
                               ),
                             ],
                             const SizedBox(height: 14),
-                            _NotesUploadCard(controller: _c.noteController),
+                            _NotesUploadCard(session: _c),
                             const SizedBox(height: 24),
                           ],
                         ),
@@ -920,9 +922,9 @@ class _CalmingCard extends StatelessWidget {
 }
 
 class _NotesUploadCard extends StatelessWidget {
-  const _NotesUploadCard({required this.controller});
+  const _NotesUploadCard({required this.session});
 
-  final TextEditingController controller;
+  final SessionLiveController session;
 
   @override
   Widget build(BuildContext context) {
@@ -936,7 +938,7 @@ class _NotesUploadCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           TextField(
-            controller: controller,
+            controller: session.noteController,
             maxLines: 3,
             style: const TextStyle(color: Colors.white, fontSize: 15, decoration: TextDecoration.none),
             cursorColor: AppColors.signaraGold,
@@ -960,33 +962,129 @@ class _NotesUploadCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          _UploadButton(
-            label: 'Upload Photo',
-            onPressed: () {
-              Get.snackbar(
-                'Upload',
-                'Connect image_picker + Storage to set session photoUrl before ending.',
-                snackPosition: SnackPosition.BOTTOM,
-                margin: const EdgeInsets.all(16),
-                backgroundColor: const Color(0xFF2A2A2A),
-                colorText: Colors.white,
-              );
-            },
-          ),
+          Obx(() {
+            final busy = session.isUploadingPhoto.value;
+            final pct = session.photoUploadProgress.value.clamp(0, 100);
+            return _UploadButton(
+              label: busy ? 'Uploading photo... $pct%' : 'Upload Photo',
+              onPressed: busy ? null : () => unawaited(session.pickAndUploadPhoto()),
+            );
+          }),
+          Obx(() {
+            final busy = session.isUploadingPhoto.value;
+            if (!busy) return const SizedBox.shrink();
+            final pct = session.photoUploadProgress.value.clamp(0, 100);
+            return Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: LinearProgressIndicator(
+                      minHeight: 8,
+                      value: pct / 100,
+                      backgroundColor: Colors.white12,
+                      valueColor: const AlwaysStoppedAnimation<Color>(AppColors.signaraGold),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '$pct% uploaded',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      decoration: TextDecoration.none,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+          Obx(() {
+            final u = session.photoUrl.value;
+            if (u.isEmpty) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.only(top: 6, bottom: 4),
+              child: Text(
+                'Photo upload completed (100%)',
+                style: TextStyle(
+                  color: Colors.green.shade400,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  decoration: TextDecoration.none,
+                ),
+              ),
+            );
+          }),
           const SizedBox(height: 8),
-          _UploadButton(
-            label: 'Upload Video',
-            onPressed: () {
-              Get.snackbar(
-                'Upload',
-                'Connect image_picker + Storage to set session videoUrl before ending.',
-                snackPosition: SnackPosition.BOTTOM,
-                margin: const EdgeInsets.all(16),
-                backgroundColor: const Color(0xFF2A2A2A),
-                colorText: Colors.white,
-              );
-            },
+          Obx(() {
+            final busy = session.isUploadingVideo.value;
+            final pct = session.videoUploadProgress.value.clamp(0, 100);
+            return _UploadButton(
+              label: busy ? 'Uploading video... $pct%' : 'Upload Video',
+              onPressed: busy ? null : () => unawaited(session.pickAndUploadVideo()),
+            );
+          }),
+          const SizedBox(height: 6),
+          Text(
+            'Fast upload tip: use 720p/medium quality, keep video 20-50MB, and prefer Wi-Fi.',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.6),
+              fontSize: 11,
+              height: 1.3,
+              decoration: TextDecoration.none,
+            ),
           ),
+          Obx(() {
+            final busy = session.isUploadingVideo.value;
+            if (!busy) return const SizedBox.shrink();
+            final pct = session.videoUploadProgress.value.clamp(0, 100);
+            return Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: LinearProgressIndicator(
+                      minHeight: 8,
+                      value: pct / 100,
+                      backgroundColor: Colors.white12,
+                      valueColor: const AlwaysStoppedAnimation<Color>(AppColors.signaraGold),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '$pct% uploaded',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      decoration: TextDecoration.none,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+          Obx(() {
+            final u = session.videoUrl.value;
+            if (u.isEmpty) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                'Video upload completed (100%)',
+                style: TextStyle(
+                  color: Colors.green.shade400,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  decoration: TextDecoration.none,
+                ),
+              ),
+            );
+          }),
         ],
       ),
     );
@@ -997,7 +1095,7 @@ class _UploadButton extends StatelessWidget {
   const _UploadButton({required this.label, required this.onPressed});
 
   final String label;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {

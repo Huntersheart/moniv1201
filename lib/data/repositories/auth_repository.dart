@@ -17,6 +17,13 @@ bool _isTransientFirestore(Object e) {
   return s.contains('unavailable') || s.contains('deadline-exceeded');
 }
 
+bool _isPermissionDeniedFirestore(Object e) {
+  if (e is FirebaseException) {
+    return e.code == 'permission-denied';
+  }
+  return e.toString().toLowerCase().contains('permission-denied');
+}
+
 Future<T> _retryTransient<T>(
   Future<T> Function() op, {
   int maxAttempts = 4,
@@ -116,6 +123,7 @@ class AuthRepository {
       // Always use Auth uid so Firestore paths/queries match security rules.
       return UserModel.fromMap(doc.data()!).copyWith(uid: user.uid);
     } on FirebaseException catch (e) {
+      if (_isPermissionDeniedFirestore(e)) return null;
       if (_isTransientFirestore(e)) return null;
       rethrow;
     }

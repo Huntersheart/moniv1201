@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:video_player/video_player.dart';
 
 import '../../app/routes/app_routes.dart';
 import '../../core/theme/app_colors.dart';
@@ -320,40 +321,45 @@ class _SummaryContent extends StatelessWidget {
             ],
           ),
         ),
-        if (s.photoUrl.trim().isNotEmpty || s.videoUrl.trim().isNotEmpty) ...[
-          const SizedBox(height: 16),
-          _cardBox(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  'Media',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    decoration: TextDecoration.none,
-                  ),
+        const SizedBox(height: 16),
+        _cardBox(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Media',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  decoration: TextDecoration.none,
                 ),
-                const SizedBox(height: 12),
-                if (s.photoUrl.trim().isNotEmpty)
-                  _labelValue(
-                    label: 'Photo URL',
-                    value: s.photoUrl.trim(),
-                    valueColor: _valueGreen,
-                  ),
-                if (s.photoUrl.trim().isNotEmpty && s.videoUrl.trim().isNotEmpty)
-                  const SizedBox(height: 12),
-                if (s.videoUrl.trim().isNotEmpty)
-                  _labelValue(
-                    label: 'Video URL',
-                    value: s.videoUrl.trim(),
-                    valueColor: _valueGreen,
-                  ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 12),
+              if (s.photoUrl.trim().isNotEmpty)
+                _MediaImage(url: s.photoUrl.trim())
+              else
+                _MediaEmpty(label: 'Session Image not uploaded'),
+              const SizedBox(height: 12),
+              if (s.videoUrl.trim().isNotEmpty)
+                _MediaVideo(
+                  key: ValueKey<String>(s.videoUrl.trim()),
+                  url: s.videoUrl.trim(),
+                )
+              else
+                _MediaEmpty(label: 'Session Video not uploaded'),
+              const SizedBox(height: 12),
+              Text(
+                'Stored in Firebase for this dog session.',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.65),
+                  fontSize: 12,
+                  decoration: TextDecoration.none,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ],
     );
   }
@@ -456,6 +462,341 @@ class _SummaryContent extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: color,
                     borderRadius: BorderRadius.circular(5),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _MediaImage extends StatelessWidget {
+  const _MediaImage({required this.url});
+
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'Session Image',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            decoration: TextDecoration.none,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: AspectRatio(
+            aspectRatio: 16 / 9,
+            child: Image.network(
+              url,
+              fit: BoxFit.cover,
+              loadingBuilder: (context, child, progress) {
+                if (progress == null) return child;
+                return Container(
+                  color: Colors.black26,
+                  alignment: Alignment.center,
+                  child: const CircularProgressIndicator(
+                    color: AppColors.signaraGold,
+                  ),
+                );
+              },
+              errorBuilder: (_, _, _) => Container(
+                color: Colors.black26,
+                alignment: Alignment.center,
+                child: Text(
+                  'Could not load image',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 13,
+                    decoration: TextDecoration.none,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MediaEmpty extends StatelessWidget {
+  const _MediaEmpty({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 74,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Colors.black26,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.65),
+          fontSize: 13,
+          decoration: TextDecoration.none,
+        ),
+      ),
+    );
+  }
+}
+
+class _MediaVideo extends StatefulWidget {
+  const _MediaVideo({super.key, required this.url});
+
+  final String url;
+
+  @override
+  State<_MediaVideo> createState() => _MediaVideoState();
+}
+
+class _MediaVideoState extends State<_MediaVideo> {
+  static const double _videoWidth = 318;
+  static const double _videoHeight = 212;
+
+  VideoPlayerController? _controller;
+  Future<void>? _initFuture;
+  bool _isMuted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _setupController();
+  }
+
+  @override
+  void didUpdateWidget(covariant _MediaVideo oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.url != widget.url) {
+      _controller?.dispose();
+      _setupController();
+      setState(() {});
+    }
+  }
+
+  void _setupController() {
+    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.url));
+    _initFuture = _controller!.initialize().then((_) {
+      _controller?.setLooping(true);
+    });
+  }
+
+  static String _fmt(Duration d) {
+    final totalSeconds = d.inSeconds;
+    final h = totalSeconds ~/ 3600;
+    final m = (totalSeconds % 3600) ~/ 60;
+    final s = totalSeconds % 60;
+    if (h > 0) {
+      return '${h.toString().padLeft(2, '0')}:'
+          '${m.toString().padLeft(2, '0')}:'
+          '${s.toString().padLeft(2, '0')}';
+    }
+    return '${m.toString().padLeft(2, '0')}:'
+        '${s.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _seekBy(Duration delta) async {
+    final c = _controller;
+    if (c == null || !c.value.isInitialized) return;
+    final max = c.value.duration;
+    var target = c.value.position + delta;
+    if (target < Duration.zero) target = Duration.zero;
+    if (target > max) target = max;
+    await c.seekTo(target);
+  }
+
+  Future<void> _toggleMute() async {
+    final c = _controller;
+    if (c == null || !c.value.isInitialized) return;
+    if (_isMuted) {
+      await c.setVolume(1);
+    } else {
+      await c.setVolume(0);
+    }
+    if (mounted) setState(() => _isMuted = !_isMuted);
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = _controller;
+    if (c == null) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'Session Video',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            decoration: TextDecoration.none,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.center,
+          child: SizedBox(
+            width: _videoWidth,
+            height: _videoHeight,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                color: Colors.black45,
+                child: FutureBuilder<void>(
+                  future: _initFuture,
+                  builder: (context, snap) {
+                    if (snap.connectionState != ConnectionState.done) {
+                      return const Center(
+                        child: CircularProgressIndicator(color: AppColors.signaraGold),
+                      );
+                    }
+                    if (snap.hasError) {
+                      return Center(
+                        child: Text(
+                          'Could not load video',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.7),
+                            fontSize: 13,
+                            decoration: TextDecoration.none,
+                          ),
+                        ),
+                      );
+                    }
+                    final size = c.value.size;
+                    final safeW = size.width <= 0 ? 16.0 : size.width;
+                    final safeH = size.height <= 0 ? 9.0 : size.height;
+                    return ValueListenableBuilder<VideoPlayerValue>(
+                      valueListenable: c,
+                      builder: (context, value, _) {
+                        return FittedBox(
+                          fit: BoxFit.contain,
+                          child: SizedBox(
+                            width: safeW,
+                            height: safeH,
+                            child: VideoPlayer(c),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+        ValueListenableBuilder<VideoPlayerValue>(
+          valueListenable: c,
+          builder: (context, value, _) {
+            final total = value.duration;
+            final position = value.position > total ? total : value.position;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: VideoProgressIndicator(
+                    c,
+                    allowScrubbing: true,
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    colors: VideoProgressColors(
+                      playedColor: AppColors.signaraGold,
+                      bufferedColor: Colors.white38,
+                      backgroundColor: Colors.white12,
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _fmt(position),
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.75),
+                          fontSize: 12,
+                          decoration: TextDecoration.none,
+                        ),
+                      ),
+                      Text(
+                        _fmt(total),
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.75),
+                          fontSize: 12,
+                          decoration: TextDecoration.none,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  alignment: Alignment.centerLeft,
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => _seekBy(const Duration(seconds: -10)),
+                        icon: const Icon(
+                          Icons.replay_10_rounded,
+                          color: AppColors.signaraGold,
+                          size: 28,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () {
+                          if (value.isPlaying) {
+                            c.pause();
+                          } else {
+                            c.play();
+                          }
+                          setState(() {});
+                        },
+                        icon: Icon(
+                          value.isPlaying ? Icons.pause_circle_filled : Icons.play_circle_fill,
+                          color: AppColors.signaraGold,
+                          size: 36,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => _seekBy(const Duration(seconds: 10)),
+                        icon: const Icon(
+                          Icons.forward_10_rounded,
+                          color: AppColors.signaraGold,
+                          size: 28,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        onPressed: _toggleMute,
+                        icon: Icon(
+                          _isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+                          color: AppColors.signaraGold,
+                          size: 24,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],

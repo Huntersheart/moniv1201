@@ -1,10 +1,14 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../app/routes/app_routes.dart';
 import '../../data/models/session_model.dart';
+import '../../data/remote/storage_service.dart';
 import '../../data/repositories/dog_repository.dart';
 import '../../data/repositories/session_repository.dart';
 import 'auth_controller.dart';
@@ -13,8 +17,9 @@ import 'dashboard_controller.dart';
 class SessionLiveController extends GetxController {
   final SessionRepository _sessionRepo;
   final DogRepository _dogRepo;
+  final StorageService _storage;
 
-  SessionLiveController(this._sessionRepo, this._dogRepo);
+  SessionLiveController(this._sessionRepo, this._dogRepo, this._storage);
 
   final isLoading = false.obs;
   final Rxn<SessionModel> activeSession = Rxn<SessionModel>();
@@ -40,11 +45,16 @@ class SessionLiveController extends GetxController {
   final noteController = TextEditingController();
   final photoUrl = ''.obs;
   final videoUrl = ''.obs;
+  final isUploadingPhoto = false.obs;
+  final isUploadingVideo = false.obs;
+  final photoUploadProgress = 0.obs;
+  final videoUploadProgress = 0.obs;
 
   /// Matches live session UI chips: Calm / Moderate / Strong.
   static const List<String> hapticPresets = ['Calm', 'Moderate', 'Strong'];
 
   static const Duration _firestoreSyncInterval = Duration(seconds: 12);
+  static const int _maxVideoUploadBytes = 50 * 1024 * 1024;
 
   String get elapsedDisplay {
     final h = elapsedSeconds.value ~/ 3600;
@@ -250,6 +260,114 @@ class SessionLiveController extends GetxController {
       const Duration(seconds: 1),
       (_) => elapsedSeconds.value++,
     );
+  }
+
+  Future<void> pickAndUploadPhoto() async {
+    final session = activeSession.value;
+    final uid = Get.isRegistered<AuthController>()
+        ? Get.find<AuthController>().currentUser.value?.uid ?? ''
+        : '';
+    if (session == null || uid.isEmpty) {
+      _snack('Error', 'No active session or not signed in.');
+      return;
+    }
+    if (isUploadingPhoto.value) return;
+    final picker = ImagePicker();
+    final x = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+    );
+    if (x == null) return;
+    photoUploadProgress.value = 1;
+    photoUrl.value = '';
+    isUploadingPhoto.value = true;
+    try {
+      final imageBytes = await x.readAsBytes();
+      final url = await _storage.uploadSessionPhotoBytes(
+        userId: uid,
+        sessionId: session.sessionId,
+        imageBytes: imageBytes,
+        filePath: x.path,
+        onProgress: (progress) {
+          photoUploadProgress.value = progress.clamp(1, 100);
+        },
+      );
+      photoUrl.value = url;
+      photoUploadProgress.value = 100;
+      unawaited(_pushActiveProgressToFirestore());
+    } on FirebaseException catch (e) {
+      debugPrint('[SessionLive] photo upload: $e');
+      if (e.code == 'unauthorized') {
+        _snack(
+          'Storage permission denied',
+          'Deploy updated Firebase Storage rules, then retry image upload.',
+        );
+      } else {
+        _snack('Upload failed', 'Could not upload photo. Check connection and try again.');
+      }
+    } catch (e) {
+      debugPrint('[SessionLive] photo upload: $e');
+      _snack('Upload failed', 'Could not upload photo. Check connection and try again.');
+    } finally {
+      isUploadingPhoto.value = false;
+    }
+  }
+
+  Future<void> pickAndUploadVideo() async {
+    final session = activeSession.value;
+    final uid = Get.isRegistered<AuthController>()
+        ? Get.find<AuthController>().currentUser.value?.uid ?? ''
+        : '';
+    if (session == null || uid.isEmpty) {
+      _snack('Error', 'No active session or not signed in.');
+      return;
+    }
+    if (isUploadingVideo.value) return;
+    _snack('Upload tip', 'Use Wi-Fi and keep video around 20-50MB for faster upload.');
+    final picker = ImagePicker();
+    final x = await picker.pickVideo(source: ImageSource.gallery);
+    if (x == null) return;
+    final pickedFile = File(x.path);
+    final sizeBytes = await pickedFile.length();
+    if (sizeBytes > _maxVideoUploadBytes) {
+      final mb = (sizeBytes / (1024 * 1024)).toStringAsFixed(1);
+      _snack(
+        'Video too large',
+        'Selected video is ${mb}MB. Please keep it under 50MB (720p/medium quality).',
+      );
+      return;
+    }
+    videoUploadProgress.value = 1;
+    videoUrl.value = '';
+    isUploadingVideo.value = true;
+    try {
+      final url = await _storage.uploadSessionVideo(
+        userId: uid,
+        sessionId: session.sessionId,
+        filePath: x.path,
+        onProgress: (progress) {
+          videoUploadProgress.value = progress.clamp(1, 100);
+        },
+      );
+      videoUrl.value = url;
+      videoUploadProgress.value = 100;
+      unawaited(_pushActiveProgressToFirestore());
+    } on FirebaseException catch (e) {
+      debugPrint('[SessionLive] video upload: $e');
+      if (e.code == 'unauthorized') {
+        _snack(
+          'Storage permission denied',
+          'Deploy updated Firebase Storage rules, then retry video upload.',
+        );
+      } else {
+        _snack('Upload failed', 'Could not upload video. Check connection and try again.');
+      }
+    } catch (e) {
+      debugPrint('[SessionLive] video upload: $e');
+      _snack('Upload failed', 'Could not upload video. Check connection and try again.');
+    } finally {
+      isUploadingVideo.value = false;
+    }
   }
 
   Future<void> endSession() async {

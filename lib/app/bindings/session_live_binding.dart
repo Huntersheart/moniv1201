@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 
 import '../../data/remote/auth_service.dart';
+import '../../data/remote/storage_service.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/dog_repository.dart';
 import '../../data/repositories/session_repository.dart';
@@ -25,10 +26,14 @@ class SessionLiveBinding extends Bindings {
 
     Get.lazyPut<SessionRepository>(() => SessionRepository(), fenix: true);
     Get.lazyPut<DogRepository>(() => DogRepository(), fenix: true);
+    if (!Get.isRegistered<StorageService>()) {
+      Get.lazyPut<StorageService>(() => StorageService(), fenix: true);
+    }
     Get.lazyPut<SessionLiveController>(
       () => SessionLiveController(
         Get.find<SessionRepository>(),
         Get.find<DogRepository>(),
+        Get.find<StorageService>(),
       ),
     );
   }

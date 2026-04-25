@@ -40,7 +40,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Take a photo for your dog profile picture.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Choose a photo from your library for your dog profile.</string>
+	<string>Choose photos and videos from your library for session notes and dog profile.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
