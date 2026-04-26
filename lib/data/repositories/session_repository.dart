@@ -173,4 +173,26 @@ class SessionRepository {
   Future<void> deleteSession(String sessionId) async {
     await _sessions.doc(sessionId).delete();
   }
+
+  Future<void> deleteSessionsByDog({
+    required String userId,
+    required String dogId,
+  }) async {
+    if (userId.isEmpty || dogId.isEmpty) return;
+    const int pageSize = 200;
+    while (true) {
+      final snap = await _sessions
+          .where('userId', isEqualTo: userId)
+          .where('dogId', isEqualTo: dogId)
+          .limit(pageSize)
+          .get();
+      if (snap.docs.isEmpty) break;
+      final batch = _db.batch();
+      for (final doc in snap.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+      if (snap.docs.length < pageSize) break;
+    }
+  }
 }

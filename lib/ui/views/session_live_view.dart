@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -302,12 +303,12 @@ class _SessionStatusCard extends StatelessWidget {
             ),
             child: ClipOval(
               child: url != null && url.isNotEmpty
-                  ? Image.network(
-                      url,
+                  ? CachedNetworkImage(
+                      imageUrl: url,
                       fit: BoxFit.cover,
                       width: 96,
                       height: 96,
-                      errorBuilder: (_, _, _) => Image.asset(
+                      errorWidget: (context, imageUrl, error) => Image.asset(
                         'assets/icons/dog_icon.png',
                         fit: BoxFit.cover,
                         width: 96,

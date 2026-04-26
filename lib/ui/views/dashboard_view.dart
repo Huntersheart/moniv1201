@@ -1,5 +1,6 @@
 import 'dart:ui' show ImageFilter;
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -235,65 +236,85 @@ class _DashboardViewState extends State<DashboardView> {
                 children: [
                   _Header(onLogout: _logout, authCtrl: _authCtrl),
                   Expanded(
-                    child: Obx(() {
-                      final dogs = _ctrl.dogs
-                          .map(_DogRow.fromModel)
-                          .toList();
-                      final sessionRows = _ctrl.completedSessions
-                          .map(_SessionRow.fromModel)
-                          .toList();
-                      final homeSessions = sessionRows.take(2).toList();
-                      final latestRow =
-                          sessionRows.isNotEmpty ? sessionRows.first : null;
-                      return IndexedStack(
-                        index: _tabIndex,
-                        children: [
-                          _DashboardHomeTab(
-                            dogs: dogs,
-                            sessions: homeSessions,
-                            latestSession: latestRow,
-                            selectedDogIndex: _ctrl.selectedDogIndex.value,
-                            onSelectDogIndex: _ctrl.selectDog,
-                            onDogCardTap: (d) => _showDogDetailDialog(context, d),
-                            onSeeAllDogs: () {
-                              FocusManager.instance.primaryFocus?.unfocus();
-                              setState(() => _tabIndex = 1);
-                            },
-                            onAddDog: _openAddDog,
-                            onStartSession: () {
-                              FocusManager.instance.primaryFocus?.unfocus();
-                              final dog = _ctrl.selectedDog;
-                              if (dog == null) {
-                                Get.snackbar(
-                                  'Select a dog',
-                                  'Choose a dog above before starting a session.',
-                                  snackPosition: SnackPosition.BOTTOM,
-                                  margin: const EdgeInsets.all(16),
-                                  backgroundColor: const Color(0xFF2A2A2A),
-                                  colorText: Colors.white,
-                                );
-                                return;
-                              }
-                              _confirmStartSessionThenSelectModule(
-                                context,
-                                dogId: dog.dogId,
+                    child: StreamBuilder<List<DogModel>>(
+                      stream: _ctrl.dogsStream,
+                      initialData: _ctrl.dogs.toList(),
+                      builder: (context, dogSnap) {
+                        final dogModels = dogSnap.data ?? const <DogModel>[];
+                        final dogs = dogModels.map(_DogRow.fromModel).toList();
+                        return StreamBuilder<List<SessionModel>>(
+                          stream: _ctrl.sessionsStream,
+                          initialData: _ctrl.completedSessions.toList(),
+                          builder: (context, sessionSnap) {
+                            final sessionModels =
+                                sessionSnap.data ?? const <SessionModel>[];
+                            final sessionRows =
+                                sessionModels.map(_SessionRow.fromModel).toList();
+                            final homeSessions = sessionRows.take(2).toList();
+                            final latestRow =
+                                sessionRows.isNotEmpty ? sessionRows.first : null;
+                            return Obx(() {
+                              final selectedDogIndex = _ctrl.selectedDogIndex.value;
+                              return IndexedStack(
+                                index: _tabIndex,
+                                children: [
+                                  _DashboardHomeTab(
+                                    dogs: dogs,
+                                    sessions: homeSessions,
+                                    latestSession: latestRow,
+                                    selectedDogIndex: selectedDogIndex,
+                                    onSelectDogIndex: _ctrl.selectDog,
+                                    onDogCardTap: (d) =>
+                                        _showDogDetailDialog(context, d),
+                                    onSeeAllDogs: () {
+                                      FocusManager.instance.primaryFocus?.unfocus();
+                                      setState(() => _tabIndex = 1);
+                                    },
+                                    onAddDog: _openAddDog,
+                                    onStartSession: () {
+                                      FocusManager.instance.primaryFocus?.unfocus();
+                                      final validIndex = selectedDogIndex >= 0 &&
+                                          selectedDogIndex < dogModels.length;
+                                      final dog =
+                                          validIndex ? dogModels[selectedDogIndex] : null;
+                                      if (dog == null) {
+                                        Get.snackbar(
+                                          'Select a dog',
+                                          'Choose a dog above before starting a session.',
+                                          snackPosition: SnackPosition.BOTTOM,
+                                          margin: const EdgeInsets.all(16),
+                                          backgroundColor: const Color(0xFF2A2A2A),
+                                          colorText: Colors.white,
+                                        );
+                                        return;
+                                      }
+                                      _confirmStartSessionThenSelectModule(
+                                        context,
+                                        dogId: dog.dogId,
+                                      );
+                                    },
+                                  ),
+                                  _DogTabPanel(
+                                    dogs: dogs,
+                                    selectedDogIndex: selectedDogIndex,
+                                    onSelectDogIndex: _ctrl.selectDog,
+                                    onDogCardTap: (d) =>
+                                        _showDogDetailDialog(context, d),
+                                    onDeleteDog: (d) {
+                                      if (d.dogModel != null) {
+                                        _ctrl.deleteDog(d.dogModel!);
+                                      }
+                                    },
+                                    onAddDog: _openAddDog,
+                                  ),
+                                  _SessionHistoryPanel(sessions: sessionRows),
+                                ],
                               );
-                            },
-                          ),
-                          _DogTabPanel(
-                            dogs: dogs,
-                            selectedDogIndex: _ctrl.selectedDogIndex.value,
-                            onSelectDogIndex: _ctrl.selectDog,
-                            onDogCardTap: (d) => _showDogDetailDialog(context, d),
-                            onDeleteDog: (d) {
-                              if (d.dogModel != null) _ctrl.deleteDog(d.dogModel!);
-                            },
-                            onAddDog: _openAddDog,
-                          ),
-                          _SessionHistoryPanel(sessions: sessionRows),
-                        ],
-                      );
-                    }),
+                            });
+                          },
+                        );
+                      },
+                    ),
                   ),
                 ],
               ),
@@ -1055,12 +1076,12 @@ class _DogSelectCard extends StatelessWidget {
             ),
             child: ClipOval(
               child: data.photoUrl.isNotEmpty
-                  ? Image.network(
-                      data.photoUrl,
+                  ? CachedNetworkImage(
+                      imageUrl: data.photoUrl,
                       fit: BoxFit.cover,
                       width: 72,
                       height: 72,
-                      errorBuilder: (_, e, s) => Image.asset(
+                      errorWidget: (context, url, error) => Image.asset(
                         'assets/icons/dog_icon.png',
                         fit: BoxFit.cover,
                         width: 72,
@@ -1329,12 +1350,12 @@ class _DogDetailDialogContent extends StatelessWidget {
                     ),
                     child: ClipOval(
                       child: d.photoUrl.isNotEmpty
-                          ? Image.network(
-                              d.photoUrl,
+                          ? CachedNetworkImage(
+                              imageUrl: d.photoUrl,
                               fit: BoxFit.cover,
                               width: 108,
                               height: 108,
-                              errorBuilder: (context, error, stackTrace) => Image.asset(
+                              errorWidget: (context, url, error) => Image.asset(
                                 'assets/icons/dog_icon.png',
                                 fit: BoxFit.cover,
                                 width: 108,

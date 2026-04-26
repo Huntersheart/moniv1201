@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -497,20 +498,20 @@ class _MediaImage extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           child: AspectRatio(
             aspectRatio: 16 / 9,
-            child: Image.network(
-              url,
+            child: CachedNetworkImage(
+              imageUrl: url,
               fit: BoxFit.cover,
-              loadingBuilder: (context, child, progress) {
-                if (progress == null) return child;
+              progressIndicatorBuilder: (context, imageUrl, progress) {
                 return Container(
                   color: Colors.black26,
                   alignment: Alignment.center,
-                  child: const CircularProgressIndicator(
+                  child: CircularProgressIndicator(
                     color: AppColors.signaraGold,
+                    value: progress.progress,
                   ),
                 );
               },
-              errorBuilder: (_, _, _) => Container(
+              errorWidget: (context, imageUrl, error) => Container(
                 color: Colors.black26,
                 alignment: Alignment.center,
                 child: Text(

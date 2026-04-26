@@ -192,6 +192,7 @@ class DashboardController extends GetxController {
     final uid = _userId;
     if (uid.isEmpty) return;
     try {
+      await _sessionRepo.deleteSessionsByDog(userId: uid, dogId: dog.dogId);
       await _dogRepo.deleteDog(userId: uid, dogId: dog.dogId);
       // Stream listener updates [dogs] and clamps [selectedDogIndex] after delete.
     } catch (e) {
