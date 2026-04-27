@@ -30,8 +30,15 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
     super.dispose();
   }
 
+  Future<void> _onPrimaryTap() async {
+    await _auth.sendPasswordReset(_email.text);
+  }
+
   @override
   Widget build(BuildContext context) {
+    const subtitle = 'Enter your email. We\'ll send a password reset link.';
+    const buttonLabel = 'Send Reset Link';
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -54,7 +61,7 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Enter your email. We\'ll send a link to reset your password.',
+              subtitle,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.92),
@@ -73,9 +80,9 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
             ),
             const SizedBox(height: 20),
             Obx(() => SignaraPrimaryButton(
-                  label: 'Send reset link',
+                  label: buttonLabel,
                   isLoading: _auth.isLoading.value,
-                  onPressed: () => _auth.sendPasswordReset(_email.text),
+                  onPressed: _onPrimaryTap,
                 )),
           ],
         ),
