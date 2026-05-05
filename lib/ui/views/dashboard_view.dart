@@ -1675,7 +1675,7 @@ class _RecentSessionCard extends StatelessWidget {
                 ),
               ),
               Text(
-                data.duration,
+                "${data.duration} sec",
                 style: const TextStyle(
                   color: AppColors.signaraGold,
                   fontSize: 14,
@@ -1914,18 +1914,18 @@ class _SessionFilterChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
         decoration: BoxDecoration(
           color: selected ? AppColors.signaraGold : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: selected
                 ? AppColors.signaraGold
-                : Colors.white.withValues(alpha: 0.45),
+                : Colors.white.withValues(alpha: 0.80),
             width: 1.4,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? const Color(0xFF1A1A1A) : Colors.white,
+            color:  Colors.white,
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),

@@ -94,20 +94,11 @@ class AddDogView extends GetView<AddDogController> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Center(child: _ProfileAvatarBlock(onCameraTap: () => _openImageSourceSheet(context))),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Photo optional — tap the picture to add one',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.55),
-                        fontSize: 13,
-                        height: 1.3,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
+                    
+                    const SizedBox(height: 8.0),
                     _FormSectionCard(
                       title: 'Basic Information',
-                      subtitle: 'Name required; other fields optional',
+                      subtitle: 'Required details about your dog',
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -191,11 +182,15 @@ class AddDogView extends GetView<AddDogController> {
                               final on = controller.selectedAnxiety.contains(o);
                               return CheckboxListTile(
                                 value: on,
+                                  side: const BorderSide(
+    color: Colors.white,
+    width: 1.5,
+  ),
                                 onChanged: (_) => controller.toggleAnxiety(o),
                                 title: Text(
                                   o,
                                   style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.88),
+                                    color: Colors.white.withValues(alpha: 100),
                                     fontSize: 15,
                                     height: 1.25,
                                   ),
@@ -232,6 +227,10 @@ class AddDogView extends GetView<AddDogController> {
                               final on = controller.selectedMobility.contains(o);
                               return CheckboxListTile(
                                 value: on,
+                                  side: const BorderSide(
+    color: Colors.white,
+    width: 1.5,
+  ),
                                 onChanged: (_) => controller.toggleMobility(o),
                                 title: Text(
                                   o,
@@ -315,10 +314,10 @@ class _FormSectionCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             subtitle,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.5),
+            style: const TextStyle(
+              color: Colors.white,
               fontSize: 14,
-              fontWeight: FontWeight.w400,
+              fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 16),
@@ -354,17 +353,7 @@ class _ProfileAvatarBlock extends GetView<AddDogController> {
               return Container(
                 width: _size,
                 height: _size,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: _ring, width: 2.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _ring.withValues(alpha: 0.42),
-                      blurRadius: 20,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                ),
+               
                 child: ClipOval(
                   child: x == null
                       ? Image.asset(
@@ -383,8 +372,8 @@ class _ProfileAvatarBlock extends GetView<AddDogController> {
               );
             }),
             Positioned(
-              right: 4,
-              bottom: 2,
+              right: 12,
+              bottom: 12,
               child: GestureDetector(
                 onTap: onCameraTap,
                 child: Container(

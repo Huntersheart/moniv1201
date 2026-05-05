@@ -4,12 +4,15 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../controllers/dashboard_controller.dart';
 import '../controllers/session_live_controller.dart';
 
 const Color _kCardBg = Color(0xFF1A1D1A);
+/// Selected calming rating (reference UI).
+const Color _kCalmingSelectedGold = Color(0xFFB08D31);
 const Color _kMovement = Color(0xFF16D351);
 const Color _kComfort = Color(0xFF8B44F7);
 const Color _kEnergy = Color(0xFFD4AF37);
@@ -548,7 +551,7 @@ class _PresetChip extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             color: selected ? AppColors.signaraGold : const Color(0xFF0E0E0E),
             border: Border.all(
-              color: selected ? AppColors.signaraGold : Colors.white.withValues(alpha: 0.45),
+              color: selected ? AppColors.signaraGold : Colors.white.withValues(alpha: 0.80),
               width: 1.2,
             ),
           ),
@@ -670,7 +673,7 @@ class _MetricSlider extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                color: color,
+                color: Colors.white,
                 fontWeight: FontWeight.w700,
                 fontSize: 15,
                 decoration: TextDecoration.none,
@@ -821,7 +824,7 @@ class _RadioRow extends StatelessWidget {
           children: [
             Icon(
               selected ? Icons.check_circle : Icons.circle_outlined,
-              color: selected ? AppColors.signaraGold : Colors.white38,
+              color: selected ? AppColors.signaraGold : Colors.white,
               size: 22,
             ),
             const SizedBox(width: 12),
@@ -844,73 +847,90 @@ class _CalmingCard extends StatelessWidget {
   final int value;
   final ValueChanged<int> onChanged;
 
-  static const _labels = ['None', 'Minimal', 'Moderate', 'Good', 'Strong'];
+  static const _labels = ['None', 'Minimal', 'Moderate', 'Strong', 'Very Strong'];
 
   @override
   Widget build(BuildContext context) {
+    final subtitleStyle = GoogleFonts.poppins(
+      fontSize: 13,
+      fontWeight: FontWeight.w400,
+      color: Colors.grey.shade400,
+      decoration: TextDecoration.none,
+    );
     return _GoldBorderCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Overall Calming Effect',
-            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 4),
           Text(
-            'Overall calming effect during the full session (1–5).',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 13),
+            'Calming Effect',
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              decoration: TextDecoration.none,
+            ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 6),
+          Text(
+            'Rate the overall calming effect (1-5)',
+            style: subtitleStyle,
+          ),
+          const SizedBox(height: 16),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: List.generate(5, (i) {
               final n = i + 1;
               final sel = value == n;
               return Expanded(
                 child: Padding(
                   padding: EdgeInsets.only(left: i == 0 ? 0 : 4, right: i == 4 ? 0 : 4),
-                  child: Column(
-                    children: [
-                      Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () => onChanged(n),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => onChanged(n),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
+                        decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(8),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
-                              color: sel ? AppColors.signaraGold : const Color(0xFF121412),
-                              border: Border.all(
-                                color: sel ? AppColors.signaraGold : Colors.white24,
-                              ),
-                            ),
-                            child: Text(
+                          color: sel ? _kCalmingSelectedGold : _kCardBg,
+                          border: sel
+                              ? null
+                              : Border.all(
+                                  color: Colors.white.withValues(alpha: 0.1),
+                                  width: 1,
+                                ),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
                               '$n',
-                              style: TextStyle(
-                                color: sel ? Colors.black : Colors.white,
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
                                 fontWeight: FontWeight.w800,
-                                fontSize: 16,
+                                fontSize: 17,
                                 decoration: TextDecoration.none,
                               ),
                             ),
-                          ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _labels[i],
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.poppins(
+                                fontSize: 9,
+                                height: 1.15,
+                                fontWeight: sel ? FontWeight.w600 : FontWeight.w400,
+                                color: sel ? Colors.white : Colors.grey,
+                                decoration: TextDecoration.none,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        _labels[i],
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 9,
-                          color: Colors.white.withValues(alpha: 0.5),
-                          decoration: TextDecoration.none,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               );
@@ -945,7 +965,7 @@ class _NotesUploadCard extends StatelessWidget {
             cursorColor: AppColors.signaraGold,
             decoration: InputDecoration(
               hintText: 'Add note',
-              hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.35)),
+              hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.80)),
               filled: true,
               fillColor: Colors.black.withValues(alpha: 0.35),
               border: OutlineInputBorder(
@@ -1102,10 +1122,10 @@ class _UploadButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return OutlinedButton.icon(
       onPressed: onPressed,
-      icon: const Icon(Icons.upload_file_outlined, color: AppColors.signaraGold, size: 20),
-      label: Text(label, style: const TextStyle(color: AppColors.signaraGold, fontWeight: FontWeight.w600)),
+      icon: const Icon(Icons.upload_file_outlined, color:Colors.white, size: 20),
+      label: Text(label, style: const TextStyle(color: Colors.white,  fontWeight: FontWeight.w600)),
       style: OutlinedButton.styleFrom(
-        side: const BorderSide(color: AppColors.signaraGold, width: 1.2),
+        side: const BorderSide(color: Colors.white,  width: 1.2),
         padding: const EdgeInsets.symmetric(vertical: 14),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),

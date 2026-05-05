@@ -136,7 +136,7 @@ class _LoginViewState extends State<LoginView> {
                 Text(
                   "Don't have an account? ",
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.75),
+                    color: Colors.white,
                     fontSize: 15,
                   ),
                 ),
@@ -158,7 +158,7 @@ class _LoginViewState extends State<LoginView> {
               'Access is provided by invitation only',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.75),
+                color: Colors.white.withValues(alpha: 100),
                 fontSize: 13,
                 height: 1.4,
               ),

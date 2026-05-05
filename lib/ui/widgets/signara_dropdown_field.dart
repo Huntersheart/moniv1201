@@ -39,7 +39,7 @@ class SignaraDropdownField extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(_radius),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.55),
+              color: Colors.white.withValues(alpha: 100),
               width: 1,
             ),
           ),

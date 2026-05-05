@@ -88,7 +88,9 @@ class SessionSummaryView extends GetView<SessionSummaryController> {
                           ),
                           child: const Text(
                             'Back to Dashboard',
-                            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, decoration: TextDecoration.none),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 17, fontWeight: FontWeight.w800, decoration: TextDecoration.none),
                           ),
                         ),
                       ),
@@ -135,7 +137,7 @@ class _SummaryContent extends StatelessWidget {
   final SessionModel session;
 
   static const Color _cardBg = Color(0xFF1E1E1E);
-  static const Color _valueGreen = Color(0xFF66BB6A);
+  static const Color _valueGreen = Color(0xff00C853);
 
   @override
   Widget build(BuildContext context) {
@@ -307,7 +309,7 @@ class _SummaryContent extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+                  border: Border.all(color: Colors.white),
                 ),
                 child: Text(
                   s.notes.isEmpty ? 'No notes for this session.' : s.notes,
@@ -388,10 +390,10 @@ class _SummaryContent extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.7),
+            color: Colors.white,
             fontSize: 13,
             fontWeight: FontWeight.w500,
-            decoration: TextDecoration.none,
+            // decoration: TextDecoration.none,
           ),
         ),
         const SizedBox(height: 4),
@@ -544,7 +546,7 @@ class _MediaEmpty extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.black26,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+        border: Border.all(color: Colors.white),
       ),
       child: Text(
         label,

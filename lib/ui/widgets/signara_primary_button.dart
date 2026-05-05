@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
 
-/// App-wide gold **Next / Get Started** style — same look everywhere (shadow, height, radius).
+/// App-wide gold primary CTA — Figma: fill `#D4AF37`, 48×fill height, radius 12,
+/// padding 12h / 8v, dual gold shadows (±4 offset, blur 5 / 4, 25% opacity).
 class SignaraPrimaryButton extends StatelessWidget {
   const SignaraPrimaryButton({
     super.key,
@@ -20,31 +21,44 @@ class SignaraPrimaryButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final effectiveOnPressed = (enabled && !isLoading) ? onPressed : null;
+    const gold = AppColors.signaraGold; // #D4AF37
+    final shadowTint = gold.withValues(alpha: 0.25);
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: AppColors.signaraGoldShadow,
-            blurRadius: 16,
-            offset: const Offset(0, 6),
+            color: shadowTint,
+            offset: const Offset(4, 4),
+            blurRadius: 5,
+            spreadRadius: 0,
+          ),
+          BoxShadow(
+            color: shadowTint,
+            offset: const Offset(-4, -4),
+            blurRadius: 4,
+            spreadRadius: 0,
           ),
         ],
       ),
       child: SizedBox(
         width: double.infinity,
-        height: 52,
-        child: FilledButton(
+        height: 48,
+        child: ElevatedButton(
           onPressed: effectiveOnPressed,
-          style: FilledButton.styleFrom(
-            backgroundColor: AppColors.signaraGold,
-            foregroundColor: Colors.white,
-            disabledBackgroundColor: AppColors.signaraGold.withValues(alpha: 0.45),
-            disabledForegroundColor: Colors.white70,
+          style: ElevatedButton.styleFrom(
             elevation: 0,
+            shadowColor: Colors.transparent,
+            backgroundColor: gold,
+            foregroundColor: Colors.black,
+            disabledBackgroundColor: gold.withValues(alpha: 100),
+            disabledForegroundColor: Colors.black.withValues(alpha: 0.45),
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+            minimumSize: const Size.fromHeight(48),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(12),
             ),
           ),
           child: isLoading
@@ -53,13 +67,14 @@ class SignaraPrimaryButton extends StatelessWidget {
                   height: 22,
                   child: CircularProgressIndicator(
                     strokeWidth: 2.5,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
                   ),
                 )
               : Text(
                   label,
                   style: const TextStyle(
                     fontSize: 16,
+                    color: Colors.white,
                     fontWeight: FontWeight.w600,
                     decoration: TextDecoration.none,
                   ),

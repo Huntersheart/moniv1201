@@ -72,7 +72,7 @@ class SignaraTextField extends StatelessWidget {
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: TextStyle(
-          color: Colors.white.withValues(alpha: 0.45),
+          color: Colors.white.withValues(alpha: 0.70),
           fontSize: 16,
         ),
         filled: true,
@@ -80,8 +80,8 @@ class SignaraTextField extends StatelessWidget {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         counterText: maxLength != null ? '' : null,
         border: _border(Colors.white.withValues(alpha: 0.55)),
-        enabledBorder: _border(Colors.white.withValues(alpha: 0.55)),
-        focusedBorder: _border(Colors.white.withValues(alpha: 0.95)),
+        enabledBorder: _border(Colors.white.withValues(alpha: 100)),
+        focusedBorder: _border(Colors.white.withValues(alpha: 100)),
         errorBorder: _border(Colors.redAccent.withValues(alpha: 0.8)),
         focusedErrorBorder: _border(Colors.redAccent),
         suffixIcon: showEye

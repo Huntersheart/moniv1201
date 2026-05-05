@@ -294,10 +294,8 @@ class _SingleImageHeroPage extends StatelessWidget {
           page.subtitle,
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: page.subtitleMuted
-                ? const Color(0xFFB8B8B8)
-                : Colors.white.withValues(alpha: 0.95),
-            fontSize: 16,
+                 color: Colors.white,
+            fontSize: 15,
             height: 1.45,
             fontWeight: FontWeight.w400,
           ),
