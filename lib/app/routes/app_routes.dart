@@ -10,4 +10,5 @@ abstract final class AppRoutes {
   static const String selectModule = '/select-module';
   static const String sessionLive = '/session-live';
   static const String sessionSummary = '/session-summary';
+  static const String adminDashboard = '/admin';
 }

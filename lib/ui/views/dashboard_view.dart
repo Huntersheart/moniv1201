@@ -447,6 +447,13 @@ class _Header extends StatelessWidget {
             icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 24),
             tooltip: 'Logout',
           ),
+          if (user?.isAdmin ?? false)
+            IconButton(
+              onPressed: () => Get.toNamed(AppRoutes.adminDashboard),
+              icon: const Icon(Icons.shield_rounded,
+                  color: AppColors.signaraGold, size: 24),
+              tooltip: 'Admin Panel',
+            ),
         ],
       ),
     );
