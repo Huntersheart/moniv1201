@@ -3,6 +3,12 @@ platform :ios, '13.0'
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
+# Workaround for background_fetch / TSBackgroundFetch.xcframework static binary
+# See: https://github.com/transistorsoft/flutter_background_fetch#ios-setup
+pre_install do |installer|
+  Pod::Installer::Xcode::TargetValidator.send(:define_method, :verify_no_static_framework_transitive_dependencies) {}
+end
+
 project 'Runner', {
   'Debug' => :debug,
   'Profile' => :release,
