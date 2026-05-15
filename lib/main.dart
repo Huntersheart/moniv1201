@@ -22,7 +22,7 @@ Future<void> main() async {
 
   // Registrar headless callback ANTES de runApp
   // Esto permite que background_fetch despierte la app aunque este cerrada
-  BackgroundFetch.registerHeadlessTask(_headlessCallback);
+  BackgroundFetch.registerHeadlessTask(stormHeadlessCallback);
 
   await FirebaseService.initialize();
   if (FirebaseService.isInitialized) {

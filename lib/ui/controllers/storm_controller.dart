@@ -5,8 +5,8 @@ import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:background_fetch/background_fetch.dart';
 
-import '../data/services/nws_service.dart';
-import '../data/services/ble_service.dart';
+import '../../data/services/nws_service.dart';
+import '../../data/services/ble_service.dart';
 
 /// Claves en SharedPreferences
 const String _kPrefLastSentZone = 'storm_last_sent_zone';
@@ -76,16 +76,14 @@ class StormController extends GetxController {
           requiresBatteryNotLow: false,     // queremos que funcione aunque la bateria este baja
           requiresCharging: false,
           requiresStorageNotLow: false,
-          requiresNetworkConnectivity: true, // necesita internet para NWS
           startOnBoot: true,                // Android: inicia automaticamente al reiniciar
         ),
         _onBackgroundFetch,
         _onBackgroundFetchTimeout,
       );
 
-      // Registrar tarea headless para cuando la app esta completamente cerrada
-      await BackgroundFetch.registerHeadlessTask(_headlessCallback);
-
+      // El registro del headless callback se hace en main.dart antes de runApp
+      // para que funcione incluso cuando la app esta completamente cerrada.
       debugPrint('[Storm] background_fetch configurado ✓');
     } catch (e) {
       debugPrint('[Storm] background_fetch init error: $e');
@@ -203,7 +201,7 @@ class StormController extends GetxController {
 // ── Headless callback (app completamente cerrada) ─────────────
 // Debe ser top-level (no metodo de clase) para background_fetch
 @pragma('vm:entry-point')
-void _headlessCallback(HeadlessTask task) async {
+void stormHeadlessCallback(HeadlessTask task) async {
   final taskId = task.taskId;
   final isTimeout = task.timeout;
 
