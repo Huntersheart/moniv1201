@@ -8,6 +8,7 @@ import '../../data/repositories/device_repository.dart';
 import '../../data/repositories/session_repository.dart';
 import '../../ui/controllers/auth_controller.dart';
 import '../../ui/controllers/ble_controller.dart';
+import '../../ui/controllers/storm_controller.dart';
 
 class InitialBinding extends Bindings {
   @override
@@ -34,6 +35,9 @@ class InitialBinding extends Bindings {
     }
     if (!Get.isRegistered<BleController>()) {
       Get.put<BleController>(BleController(), permanent: true);
+    }
+    if (!Get.isRegistered<StormController>()) {
+      Get.put<StormController>(StormController(), permanent: true);
     }
   }
 }

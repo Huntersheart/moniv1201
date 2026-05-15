@@ -39,6 +39,12 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Take a photo for your dog profile picture.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Signara needs your location to check local weather alerts and automatically protect your dog during storms.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Signara uses your location in the background to check for storm alerts even when the app is closed, so your dog's collar can respond automatically.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Signara uses your location in the background to check for storm alerts and protect your dog automatically.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Signara uses Bluetooth to connect to your dog's collar and send calming haptic signals.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
@@ -72,6 +78,7 @@
 	<array>
 		<string>remote-notification</string>
 		<string>fetch</string>
+		<string>location</string>
 	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
