@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 /// Same outline style as [SignaraTextField] — use for gender / single-select fields.
+///
+/// [value] puede ser null para mostrar un hint (placeholder) cuando no hay
+/// seleccion — util en dropdowns opcionales como Breed.
 class SignaraDropdownField extends StatelessWidget {
   const SignaraDropdownField({
     super.key,
@@ -9,18 +12,23 @@ class SignaraDropdownField extends StatelessWidget {
     required this.items,
     required this.onChanged,
     this.labelTextAlign = TextAlign.start,
+    this.hintText,
   });
 
   final String label;
-  final String value;
+  final String? value;           // null = sin seleccion (muestra hintText)
   final List<String> items;
   final ValueChanged<String?> onChanged;
   final TextAlign labelTextAlign;
+  final String? hintText;        // placeholder cuando value == null
 
   static const double _radius = 10;
 
   @override
   Widget build(BuildContext context) {
+    // Valor efectivo: null si no esta en la lista (muestra hint)
+    final effectiveValue = (value != null && items.contains(value)) ? value : null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -45,7 +53,7 @@ class SignaraDropdownField extends StatelessWidget {
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
-              value: items.contains(value) ? value : items.first,
+              value: effectiveValue,
               isExpanded: true,
               borderRadius: BorderRadius.circular(_radius),
               dropdownColor: const Color(0xFF1E2A22),
@@ -58,6 +66,16 @@ class SignaraDropdownField extends StatelessWidget {
                 Icons.keyboard_arrow_down_rounded,
                 color: Colors.white.withValues(alpha: 0.85),
               ),
+              hint: hintText != null
+                  ? Text(
+                      hintText!,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.45),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    )
+                  : null,
               items: items
                   .map(
                     (e) => DropdownMenuItem<String>(

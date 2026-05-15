@@ -6,7 +6,7 @@ class DogModel {
   final String name;
   final String breed;
   final int ageMonths;
-  final double weightKg;
+  final double weightLbs;
   final String gender;
   final String photoUrl;
   final String microchipId;
@@ -23,7 +23,7 @@ class DogModel {
     required this.name,
     this.breed = '',
     this.ageMonths = 0,
-    this.weightKg = 0.0,
+    this.weightLbs = 0.0,
     this.gender = 'Male',
     this.photoUrl = '',
     this.microchipId = '',
@@ -41,7 +41,7 @@ class DogModel {
     return '$years ${years == 1 ? 'year' : 'years'}';
   }
 
-  String get weightDisplay => '${weightKg.toStringAsFixed(1)} kg';
+  String get weightDisplay => '${weightLbs.toStringAsFixed(1)} lbs';
 
   factory DogModel.fromMap(Map<String, dynamic> map, {String? id}) {
     return DogModel(
@@ -50,7 +50,7 @@ class DogModel {
       name: map['name'] as String? ?? '',
       breed: map['breed'] as String? ?? '',
       ageMonths: map['ageMonths'] as int? ?? 0,
-      weightKg: (map['weightKg'] as num?)?.toDouble() ?? 0.0,
+      weightLbs: (map['weightLbs'] as num?)?.toDouble() ?? (map['weightKg'] as num?)?.toDouble() ?? 0.0,
       gender: map['gender'] as String? ?? 'Male',
       photoUrl: map['photoUrl'] as String? ?? '',
       microchipId: map['microchipId'] as String? ?? '',
@@ -70,7 +70,7 @@ class DogModel {
       'name': name,
       'breed': breed,
       'ageMonths': ageMonths,
-      'weightKg': weightKg,
+      'weightLbs': weightLbs,
       'gender': gender,
       'photoUrl': photoUrl,
       'microchipId': microchipId,
@@ -90,7 +90,7 @@ class DogModel {
     String? name,
     String? breed,
     int? ageMonths,
-    double? weightKg,
+    double? weightLbs,
     String? gender,
     String? photoUrl,
     String? microchipId,
@@ -107,7 +107,7 @@ class DogModel {
       name: name ?? this.name,
       breed: breed ?? this.breed,
       ageMonths: ageMonths ?? this.ageMonths,
-      weightKg: weightKg ?? this.weightKg,
+      weightLbs: weightLbs ?? this.weightLbs,
       gender: gender ?? this.gender,
       photoUrl: photoUrl ?? this.photoUrl,
       microchipId: microchipId ?? this.microchipId,

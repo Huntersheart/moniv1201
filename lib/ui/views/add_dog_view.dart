@@ -110,31 +110,64 @@ class AddDogView extends GetView<AddDogController> {
                             textInputAction: TextInputAction.next,
                           ),
                           const SizedBox(height: 16),
-                          SignaraTextField(
+                          // ── Breed dropdown ───────────────────────────────
+                          Obx(() => SignaraDropdownField(
                             label: 'Breed',
-                            labelTextAlign: TextAlign.start,
-                            controller: controller.breedController,
-                            hintText: 'Enter breed (optional)',
-                            textInputAction: TextInputAction.next,
-                          ),
+                            value: controller.breed.value.isEmpty
+                                ? null
+                                : controller.breed.value,
+                            items: AddDogController.breedOptions,
+                            hintText: 'Select breed (optional)',
+                            onChanged: (v) {
+                              if (v != null) controller.breed.value = v;
+                            },
+                          )),
+                          // Campo libre si eligio "Other"
+                          Obx(() => controller.breed.value == 'Other'
+                              ? Padding(
+                                  padding: const EdgeInsets.only(top: 12),
+                                  child: SignaraTextField(
+                                    label: 'Breed name',
+                                    labelTextAlign: TextAlign.start,
+                                    controller: controller.breedOther,
+                                    hintText: 'Enter breed name',
+                                    textInputAction: TextInputAction.next,
+                                  ),
+                                )
+                              : const SizedBox.shrink()),
                           const SizedBox(height: 16),
+                          // ── Edad: numero + Years/Months ──────────────────
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Expanded(
+                                flex: 2,
                                 child: SignaraTextField(
-                                  label: 'Age(Years)*',
+                                  label: 'Age*',
                                   labelTextAlign: TextAlign.start,
-                                  controller: controller.ageController,
+                                  controller: controller.ageNumberController,
                                   hintText: '0',
                                   keyboardType: TextInputType.number,
                                   textInputAction: TextInputAction.next,
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 10),
                               Expanded(
+                                flex: 3,
+                                child: Obx(() => SignaraDropdownField(
+                                  label: 'Unit',
+                                  value: controller.ageUnit.value,
+                                  items: AddDogController.ageUnits,
+                                  onChanged: (v) {
+                                    if (v != null) controller.ageUnit.value = v;
+                                  },
+                                )),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                flex: 3,
                                 child: SignaraTextField(
-                                  label: 'Weight(lbs)*',
+                                  label: 'Weight (lbs)*',
                                   labelTextAlign: TextAlign.start,
                                   controller: controller.weightController,
                                   hintText: '0',

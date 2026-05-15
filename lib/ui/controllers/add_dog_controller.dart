@@ -19,16 +19,94 @@ class AddDogController extends GetxController {
   final Rxn<XFile> profileImage = Rxn<XFile>();
   final isLoading = false.obs;
 
-  final nameController = TextEditingController();
-  final breedController = TextEditingController();
-  final ageController = TextEditingController(text: '0');
+  final nameController   = TextEditingController();
   final weightController = TextEditingController(text: '0');
-  final notesController = TextEditingController();
+  final notesController  = TextEditingController();
   final microchipController = TextEditingController();
 
+  // ── Edad ────────────────────────────────────────────────────
+  // El usuario ingresa un numero + selecciona Years o Months
+  // Internamente siempre guardamos ageMonths en Firestore
+  final ageNumberController = TextEditingController(text: '0');
+  final ageUnit = 'Years'.obs; // 'Years' | 'Months'
+  static const List<String> ageUnits = ['Years', 'Months'];
+
+  int get _ageInMonths {
+    final n = int.tryParse(ageNumberController.text) ?? 0;
+    return ageUnit.value == 'Years' ? n * 12 : n;
+  }
+
+  // ── Raza ─────────────────────────────────────────────────────
+  // Dropdown con lista de razas populares + "Other" para texto libre
+  final breed     = ''.obs;         // valor seleccionado en dropdown ('' = no seleccionado)
+  final breedOther = TextEditingController(); // visible solo cuando breed == 'Other'
+
+  static const List<String> breedOptions = [
+    'Mixed / Unknown',
+    // Populares en USA (ordenadas por popularidad AKC)
+    'French Bulldog',
+    'Labrador Retriever',
+    'Golden Retriever',
+    'German Shepherd',
+    'Bulldog',
+    'Poodle',
+    'Beagle',
+    'Rottweiler',
+    'German Shorthaired Pointer',
+    'Dachshund',
+    'Pembroke Welsh Corgi',
+    'Australian Shepherd',
+    'Yorkshire Terrier',
+    'Cavalier King Charles Spaniel',
+    'Doberman Pinscher',
+    'Boxer',
+    'Miniature Schnauzer',
+    'Cane Corso',
+    'Great Dane',
+    'Shih Tzu',
+    'Siberian Husky',
+    'Bernese Mountain Dog',
+    'Border Collie',
+    'Shetland Sheepdog',
+    'Boston Terrier',
+    'Havanese',
+    'Cocker Spaniel',
+    'Maltese',
+    'Pomeranian',
+    'Chihuahua',
+    'Weimaraner',
+    'Vizsla',
+    'Basset Hound',
+    'Collie',
+    'Brittany',
+    'Mastiff',
+    'Bichon Frise',
+    'English Springer Spaniel',
+    'Pug',
+    'West Highland White Terrier',
+    'Bloodhound',
+    'Newfoundland',
+    'Saint Bernard',
+    'Rhodesian Ridgeback',
+    'Soft Coated Wheaten Terrier',
+    'Portuguese Water Dog',
+    'Chow Chow',
+    'Akita',
+    'Chinese Shar-Pei',
+    'Bull Terrier',
+    'Other',
+  ];
+
+  String get breedValue {
+    if (breed.value == 'Other') return breedOther.text.trim();
+    return breed.value;
+  }
+
+  // ── Genero ───────────────────────────────────────────────────
   final gender = 'Male'.obs;
   static const List<String> genders = ['Male', 'Female', 'Other'];
 
+  // ── Historial ────────────────────────────────────────────────
   static const List<String> anxietyOptions = [
     'Noise Phobia (Thunder/Fireworks)',
     'Separation Anxiety',
@@ -45,7 +123,7 @@ class AddDogController extends GetxController {
     'Post-Surgical Recovery',
   ];
 
-  final selectedAnxiety = <String>[].obs;
+  final selectedAnxiety  = <String>[].obs;
   final selectedMobility = <String>[].obs;
 
   // If editing an existing dog
@@ -62,15 +140,31 @@ class AddDogController extends GetxController {
 
   void _populateFromDog(DogModel dog) {
     editingDog.value = dog;
+
     nameController.text = dog.name;
-    breedController.text = dog.breed;
-    ageController.text = dog.ageMonths.toString();
-    weightController.text = dog.weightKg.toString();
+    weightController.text = dog.weightLbs.toStringAsFixed(1);
     notesController.text = dog.healthNotes;
     microchipController.text = dog.microchipId;
     gender.value = dog.gender;
-    selectedAnxiety.value = List<String>.from(dog.anxietyHistory);
+    selectedAnxiety.value  = List<String>.from(dog.anxietyHistory);
     selectedMobility.value = List<String>.from(dog.mobilityHistory);
+
+    // Edad — mostrar en la unidad mas legible
+    if (dog.ageMonths % 12 == 0 && dog.ageMonths > 0) {
+      ageUnit.value = 'Years';
+      ageNumberController.text = (dog.ageMonths ~/ 12).toString();
+    } else {
+      ageUnit.value = 'Months';
+      ageNumberController.text = dog.ageMonths.toString();
+    }
+
+    // Breed — si esta en la lista usa dropdown, si no va a Other
+    if (breedOptions.contains(dog.breed)) {
+      breed.value = dog.breed;
+    } else if (dog.breed.isNotEmpty) {
+      breed.value = 'Other';
+      breedOther.text = dog.breed;
+    }
   }
 
   void toggleAnxiety(String key) {
@@ -150,9 +244,9 @@ class AddDogController extends GetxController {
           dogId: existing.dogId,
           ownerId: uid,
           name: name,
-          breed: breedController.text.trim(),
-          ageMonths: int.tryParse(ageController.text) ?? 0,
-          weightKg: double.tryParse(weightController.text) ?? 0.0,
+          breed: breedValue,
+          ageMonths: _ageInMonths,
+          weightLbs: double.tryParse(weightController.text) ?? 0.0,
           gender: gender.value,
           photoUrl: photoUrl,
           microchipId: microchipController.text.trim(),
@@ -169,9 +263,9 @@ class AddDogController extends GetxController {
           dogId: '',
           ownerId: uid,
           name: name,
-          breed: breedController.text.trim(),
-          ageMonths: int.tryParse(ageController.text) ?? 0,
-          weightKg: double.tryParse(weightController.text) ?? 0.0,
+          breed: breedValue,
+          ageMonths: _ageInMonths,
+          weightLbs: double.tryParse(weightController.text) ?? 0.0,
           gender: gender.value,
           photoUrl: '',
           microchipId: microchipController.text.trim(),
@@ -241,11 +335,11 @@ class AddDogController extends GetxController {
   @override
   void onClose() {
     nameController.dispose();
-    breedController.dispose();
-    ageController.dispose();
+    ageNumberController.dispose();
     weightController.dispose();
     notesController.dispose();
     microchipController.dispose();
+    breedOther.dispose();
     super.onClose();
   }
 }
