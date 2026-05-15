@@ -447,13 +447,16 @@ class _Header extends StatelessWidget {
             icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 24),
             tooltip: 'Logout',
           ),
-          if (user?.isAdmin ?? false)
-            IconButton(
+          Obx(() {
+            final isAdmin = authCtrl.currentUser.value?.isAdmin ?? false;
+            if (!isAdmin) return const SizedBox.shrink();
+            return IconButton(
               onPressed: () => Get.toNamed(AppRoutes.adminDashboard),
               icon: const Icon(Icons.shield_rounded,
                   color: AppColors.signaraGold, size: 24),
               tooltip: 'Admin Panel',
-            ),
+            );
+          }),
         ],
       ),
     );
