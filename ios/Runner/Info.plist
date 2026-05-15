@@ -39,6 +39,10 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Take a photo for your dog profile picture.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Signara uses Bluetooth to connect to your dog's collar and send calming haptic signals.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>Signara uses Bluetooth to connect to your dog's collar.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Choose photos and videos from your library for session notes and dog profile.</string>
 	<key>UIApplicationSceneManifest</key>

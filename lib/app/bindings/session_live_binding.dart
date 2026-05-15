@@ -6,6 +6,7 @@ import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/dog_repository.dart';
 import '../../data/repositories/session_repository.dart';
 import '../../ui/controllers/auth_controller.dart';
+import '../../ui/controllers/ble_controller.dart';
 import '../../ui/controllers/session_live_controller.dart';
 
 class SessionLiveBinding extends Bindings {

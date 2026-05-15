@@ -24,6 +24,7 @@ dependencies:
   google_sign_in: ^6.2.2
   cached_network_image: ^3.4.1
   google_fonts: ^8.1.0
+  flutter_blue_plus: ^1.35.3
 
 dev_dependencies:
   flutter_test:

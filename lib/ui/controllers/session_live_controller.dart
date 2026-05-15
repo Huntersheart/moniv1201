@@ -12,6 +12,7 @@ import '../../data/remote/storage_service.dart';
 import '../../data/repositories/dog_repository.dart';
 import '../../data/repositories/session_repository.dart';
 import 'auth_controller.dart';
+import 'ble_controller.dart';
 import 'dashboard_controller.dart';
 
 class SessionLiveController extends GetxController {
@@ -33,6 +34,23 @@ class SessionLiveController extends GetxController {
   final hapticOn = true.obs;
   final hapticPresetIndex = 0.obs;
   final intensity = 3.0.obs;
+
+  @override
+  void onInit() {
+    super.onInit();
+    // Cuando cambia el preset, mandar comando BLE inmediatamente
+    ever(hapticPresetIndex, (int idx) {
+      if (hapticOn.value) {
+        sendHapticCommand(preset: idx);
+      }
+    });
+    // Cuando se apaga el haptic, mandar OFF al collar
+    ever(hapticOn, (bool on) {
+      if (!on) {
+        sendHapticOff();
+      }
+    });
+  }
 
   final movement = 5.0.obs;
   final comfort = 5.0.obs;
@@ -81,6 +99,28 @@ class SessionLiveController extends GetxController {
     noteController.dispose();
     _bootstrapped = false;
     super.onClose();
+  }
+
+  // ── BLE helper ──────────────────────────────────────────
+  BleController? get _ble =>
+      Get.isRegistered<BleController>() ? Get.find<BleController>() : null;
+
+  /// Envía comando haptico al collar si está conectado.
+  /// preset: 0=Calm, 1=Moderate, 2=Strong
+  void sendHapticCommand({required int preset, bool storm = false}) {
+    final ble = _ble;
+    if (ble == null || !ble.isConnected) return;
+    if (storm) {
+      unawaited(ble.sendStorm(preset: preset));
+    } else {
+      unawaited(ble.sendHaptic(preset: preset));
+    }
+  }
+
+  void sendHapticOff() {
+    final ble = _ble;
+    if (ble == null || !ble.isConnected) return;
+    unawaited(ble.sendOff());
   }
 
   String _moduleTypeFromTitle(String title) {
@@ -198,6 +238,7 @@ class SessionLiveController extends GetxController {
     _stopFirestoreSyncTimer();
     _stopSessionWatch();
     _timer?.cancel();
+    unawaited(_ble?.endSession());
     final session = activeSession.value;
     if (session != null && session.status == 'active') {
       try {
@@ -245,6 +286,10 @@ class SessionLiveController extends GetxController {
       _startFirestoreSyncTimer();
       _startSessionWatch(activeSession.value!.sessionId);
       unawaited(_pushActiveProgressToFirestore());
+      // BLE: conectar al collar automaticamente si es modulo collar
+      if (moduleType == 'collar') {
+        unawaited(_ble?.startSession());
+      }
     } catch (e) {
       debugPrint('[SessionLive] start error: $e');
       _snack('Error', 'Could not start session. Check your connection.');
@@ -374,6 +419,7 @@ class SessionLiveController extends GetxController {
     _stopFirestoreSyncTimer();
     _stopSessionWatch();
     _timer?.cancel();
+    unawaited(_ble?.endSession());
     final session = activeSession.value;
     if (session == null) {
       Get.offAllNamed(AppRoutes.home);

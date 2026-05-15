@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../controllers/ble_controller.dart';
 import '../controllers/dashboard_controller.dart';
 import '../controllers/session_live_controller.dart';
 
@@ -145,6 +146,58 @@ class _SessionLiveViewState extends State<SessionLiveView> {
                       ],
                     ),
                   ),
+                  // ── BLE status bar ──────────────────────────────
+                  if (Get.isRegistered<BleController>())
+                    Obx(() {
+                      final ble = Get.find<BleController>();
+                      final s = ble.status.value;
+                      if (s == BleStatus.disconnected) return const SizedBox.shrink();
+                      Color dot;
+                      String label;
+                      switch (s) {
+                        case BleStatus.connected:
+                          dot = const Color(0xFF16D351);
+                          label = 'Collar connected';
+                          break;
+                        case BleStatus.connecting:
+                          dot = Colors.orange;
+                          label = 'Connecting collar...';
+                          break;
+                        case BleStatus.scanning:
+                          dot = Colors.orange;
+                          label = 'Looking for collar...';
+                          break;
+                        default:
+                          dot = Colors.grey;
+                          label = '';
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 7, height: 7,
+                              decoration: BoxDecoration(
+                                color: dot,
+                                shape: BoxShape.circle,
+                                boxShadow: [BoxShadow(color: dot.withValues(alpha: 0.6), blurRadius: 5)],
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              label,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.65),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                decoration: TextDecoration.none,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
                   Expanded(
                     child: Obx(() {
                       _c.elapsedSeconds.value;

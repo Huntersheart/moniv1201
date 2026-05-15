@@ -7,6 +7,7 @@ import '../../data/repositories/dog_repository.dart';
 import '../../data/repositories/device_repository.dart';
 import '../../data/repositories/session_repository.dart';
 import '../../ui/controllers/auth_controller.dart';
+import '../../ui/controllers/ble_controller.dart';
 
 class InitialBinding extends Bindings {
   @override
@@ -24,12 +25,15 @@ class InitialBinding extends Bindings {
     Get.lazyPut<DeviceRepository>(() => DeviceRepository(), fenix: true);
     Get.lazyPut<SessionRepository>(() => SessionRepository(), fenix: true);
 
-    // Global controller
+    // Global controllers
     if (!Get.isRegistered<AuthController>()) {
       Get.put<AuthController>(
         AuthController(Get.find<AuthRepository>()),
         permanent: true,
       );
+    }
+    if (!Get.isRegistered<BleController>()) {
+      Get.put<BleController>(BleController(), permanent: true);
     }
   }
 }
