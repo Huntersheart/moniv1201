@@ -38,18 +38,31 @@ class SessionLiveController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    // Cuando cambia el preset, mandar comando BLE inmediatamente
+    // Cuando cambia el preset Y haptic está ON → activar modo continuo (storm)
     ever(hapticPresetIndex, (int idx) {
       if (hapticOn.value) {
-        sendHapticCommand(preset: idx);
+        _sendHapticContinuous(preset: idx);
       }
     });
-    // Cuando se apaga el haptic, mandar OFF al collar
+    // Cuando se enciende el haptic → activar modo continuo con preset actual
+    // Cuando se apaga → mandar OFF al collar
     ever(hapticOn, (bool on) {
-      if (!on) {
+      if (on) {
+        _sendHapticContinuous(preset: hapticPresetIndex.value);
+      } else {
         sendHapticOff();
       }
     });
+  }
+
+  /// Activa el modo haptic continuo en el collar (repite el preset cada ~8s).
+  /// Usa CMD_STORM internamente — el collar vibra de forma autónoma hasta
+  /// recibir CMD_OFF. Esto es el comportamiento esperado para sesiones
+  /// de calma activa y tormenta.
+  void _sendHapticContinuous({required int preset}) {
+    final ble = _ble;
+    if (ble == null || !ble.isConnected) return;
+    unawaited(ble.sendStorm(preset: preset));
   }
 
   final movement = 5.0.obs;
