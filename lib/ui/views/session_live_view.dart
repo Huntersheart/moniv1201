@@ -172,29 +172,40 @@ class _SessionLiveViewState extends State<SessionLiveView> {
                           break;
                       }
                       return Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 7, height: 7,
-                              decoration: BoxDecoration(
-                                color: dot,
-                                shape: BoxShape.circle,
-                                boxShadow: [BoxShadow(color: dot.withValues(alpha: 0.6), blurRadius: 5)],
-                              ),
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Center(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: dot.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: dot.withValues(alpha: 0.5), width: 1),
                             ),
-                            const SizedBox(width: 6),
-                            Text(
-                              label,
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.65),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                                decoration: TextDecoration.none,
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 7, height: 7,
+                                  decoration: BoxDecoration(
+                                    color: dot,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [BoxShadow(color: dot.withValues(alpha: 0.8), blurRadius: 6)],
+                                  ),
+                                ),
+                                const SizedBox(width: 7),
+                                Text(
+                                  label,
+                                  style: TextStyle(
+                                    color: dot,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    decoration: TextDecoration.none,
+                                    letterSpacing: 0.2,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       );
                     }),
