@@ -91,6 +91,7 @@ class BleService {
   StreamSubscription<List<ScanResult>>? _scanSub;
   StreamSubscription<BluetoothConnectionState>? _connSub;
   StreamSubscription<List<int>>? _notifySub;
+  StreamSubscription<bool>? _isScanSub;
 
   bool _autoConnectEnabled = false;
 
@@ -112,25 +113,20 @@ class BleService {
     if (_bleStatus != BleStatus.disconnected) return;
     _setStatus(BleStatus.scanning);
 
-    try {
-      await FlutterBluePlus.startScan(
-        withNames: [_kDeviceName],
-        timeout: const Duration(seconds: 10),
-      );
-    } catch (e) {
-      debugPrint('[BLE] startScan error: $e');
-      _setStatus(BleStatus.disconnected);
-      _scheduleRetry();
-      return;
-    }
-
+    // Cancelar listeners anteriores para evitar acumulacion
     _scanSub?.cancel();
+    _isScanSub?.cancel();
+
+    // Escuchar resultados ANTES de iniciar el scan
     _scanSub = FlutterBluePlus.scanResults.listen(
       (results) async {
+        // Filtrar manualmente por nombre (withNames bloquea en iOS sin pareo previo)
         final match = results.where((r) => r.device.platformName == _kDeviceName).firstOrNull;
         if (match == null) return;
+        debugPrint('[BLE] Collar encontrado: ${match.device.remoteId}');
         await FlutterBluePlus.stopScan();
         _scanSub?.cancel();
+        _isScanSub?.cancel();
         await _connectToDevice(match.device);
       },
       onError: (Object e) {
@@ -141,13 +137,27 @@ class BleService {
     );
 
     // Si el scan termina sin encontrar el collar
-    FlutterBluePlus.isScanning.listen((scanning) {
+    _isScanSub = FlutterBluePlus.isScanning.listen((scanning) {
       if (!scanning && _bleStatus == BleStatus.scanning) {
-        debugPrint('[BLE] Scan finalizado — collar no encontrado');
+        debugPrint('[BLE] Scan finalizado — collar no encontrado, reintentando...');
         _setStatus(BleStatus.disconnected);
         _scheduleRetry();
       }
     });
+
+    try {
+      // Sin withNames para que iOS pueda descubrir dispositivos no pareados
+      await FlutterBluePlus.startScan(
+        timeout: const Duration(seconds: 12),
+      );
+    } catch (e) {
+      debugPrint('[BLE] startScan error: $e');
+      _scanSub?.cancel();
+      _isScanSub?.cancel();
+      _setStatus(BleStatus.disconnected);
+      _scheduleRetry();
+      return;
+    }
   }
 
   Future<void> _connectToDevice(BluetoothDevice device) async {
@@ -260,6 +270,7 @@ class BleService {
 
   Future<void> disconnect() async {
     _scanSub?.cancel();
+    _isScanSub?.cancel();
     _notifySub?.cancel();
     _connSub?.cancel();
     try {

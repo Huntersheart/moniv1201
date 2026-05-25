@@ -151,7 +151,6 @@ class _SessionLiveViewState extends State<SessionLiveView> {
                     Obx(() {
                       final ble = Get.find<BleController>();
                       final s = ble.status.value;
-                      if (s == BleStatus.disconnected) return const SizedBox.shrink();
                       Color dot;
                       String label;
                       switch (s) {
@@ -167,9 +166,10 @@ class _SessionLiveViewState extends State<SessionLiveView> {
                           dot = Colors.orange;
                           label = 'Looking for collar...';
                           break;
-                        default:
-                          dot = Colors.grey;
-                          label = '';
+                        case BleStatus.disconnected:
+                          dot = Colors.red.shade400;
+                          label = 'Collar not found — make sure it\'s on';
+                          break;
                       }
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 6),
