@@ -136,7 +136,7 @@ class _SummaryContent extends StatelessWidget {
 
   final SessionModel session;
 
-  static const Color _cardBg = Color(0xFF1E1E1E);
+  static const Color _cardBg = Color(0xFF0D1B2A);
   static const Color _valueGreen = Color(0xff00C853);
 
   @override

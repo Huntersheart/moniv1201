@@ -18,7 +18,7 @@ import '../widgets/signara_dashboard_background.dart';
 import '../widgets/signara_logo_mark.dart';
 import '../widgets/signara_primary_button.dart';
 
-const Color _kDashboardCardBg = Color(0xFF1A1A1A);
+const Color _kDashboardCardBg = Color(0xFF0D1B2A);
 
 /// Shown before [AppRoutes.selectModule] — user confirms, then picks Collar / Vest / Hip.
 Future<void> _confirmStartSessionThenSelectModule(
@@ -323,7 +323,7 @@ class _DashboardViewState extends State<DashboardView> {
         ),
         bottomNavigationBar: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF121212),
+            color: const Color(0xFF060D18),
             border: Border(
               top: BorderSide(
                 color: Colors.white.withValues(alpha: 0.14),
@@ -780,7 +780,7 @@ class _DashboardHomeTab extends StatelessWidget {
 //   final String? dogName;
 //   final VoidCallback onOpenFull;
 
-//   static const Color _cardBg = Color(0xFF1E1E1E);
+//   static const Color _cardBg = Color(0xFF0D1B2A);
 //   static const Color _valueGreen = Color(0xFF66BB6A);
 
 //   @override

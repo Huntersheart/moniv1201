@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 class SignaraDarkBackground extends StatelessWidget {
   const SignaraDarkBackground({super.key});
 
-  static const Color _base = Color(0xFF0A0E0A);
-  static const Color _glow = Color(0xFF162018);
+  static const Color _base = Color(0xFF0A0F1E);
+  static const Color _glow = Color(0xFF0D1B2A);
 
   @override
   Widget build(BuildContext context) {

@@ -23,7 +23,7 @@ class AddDogView extends GetView<AddDogController> {
     FocusManager.instance.primaryFocus?.unfocus();
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF1A1F1C),
+      backgroundColor: const Color(0xFF0A0F1E),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -205,7 +205,7 @@ class AddDogView extends GetView<AddDogController> {
                                 }
                                 return Colors.transparent;
                               }),
-                              checkColor: WidgetStateProperty.all(const Color(0xFF1A1F1C)),
+                              checkColor: WidgetStateProperty.all(const Color(0xFF0A0F1E)),
                               side: BorderSide(color: Colors.white.withValues(alpha: 0.45)),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                             ),
@@ -250,7 +250,7 @@ class AddDogView extends GetView<AddDogController> {
                                 }
                                 return Colors.transparent;
                               }),
-                              checkColor: WidgetStateProperty.all(const Color(0xFF1A1F1C)),
+                              checkColor: WidgetStateProperty.all(const Color(0xFF0A0F1E)),
                               side: BorderSide(color: Colors.white.withValues(alpha: 0.45)),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                             ),
@@ -329,7 +329,7 @@ class _FormSectionCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1F1C),
+        color: const Color(0xFF0A0F1E),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
@@ -412,7 +412,7 @@ class _ProfileAvatarBlock extends GetView<AddDogController> {
                 child: Container(
                   padding: const EdgeInsets.all(9),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF121814),
+                    color: const Color(0xFF060D18),
                     shape: BoxShape.circle,
                     border: Border.all(color: _ring.withValues(alpha: 0.9)),
                     boxShadow: [

@@ -11,7 +11,7 @@ import '../controllers/ble_controller.dart';
 import '../controllers/dashboard_controller.dart';
 import '../controllers/session_live_controller.dart';
 
-const Color _kCardBg = Color(0xFF1A1D1A);
+const Color _kCardBg = Color(0xFF0D1B2A);
 /// Selected calming rating (reference UI).
 const Color _kCalmingSelectedGold = Color(0xFFB08D31);
 const Color _kMovement = Color(0xFF16D351);
@@ -613,7 +613,7 @@ class _PresetChip extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            color: selected ? AppColors.signaraGold : const Color(0xFF0E0E0E),
+            color: selected ? AppColors.signaraGold : const Color(0xFF0A0F1E),
             border: Border.all(
               color: selected ? AppColors.signaraGold : Colors.white.withValues(alpha: 0.80),
               width: 1.2,

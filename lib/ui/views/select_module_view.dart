@@ -17,7 +17,7 @@ class _SelectModuleBackground extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        const ColoredBox(color: Color(0xFF0C0E0C)),
+        const ColoredBox(color: Color(0xFF0A0F1E)),
         Positioned(
           top: -120,
           left: -80,
@@ -29,7 +29,7 @@ class _SelectModuleBackground extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFF2A4A32).withValues(alpha: 0.45),
+                    const Color(0xFF0D2A4A).withValues(alpha: 0.45),
                     const Color(0xFF3D5220).withValues(alpha: 0.12),
                     Colors.transparent,
                   ],
@@ -264,7 +264,7 @@ class _SelectModuleViewState extends State<SelectModuleView> {
                                 curve: Curves.easeOut,
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF1A1D1A),
+                                  color: const Color(0xFF0D1B2A),
                                   borderRadius: BorderRadius.circular(14),
                                   border: Border.all(
                                     color: selected
@@ -281,7 +281,7 @@ class _SelectModuleViewState extends State<SelectModuleView> {
                                       width: 76,
                                       height: 76,
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF121412),
+                                        color: const Color(0xFF060D18),
                                         borderRadius:
                                             BorderRadius.circular(12),
                                       ),

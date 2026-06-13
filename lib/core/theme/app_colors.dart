@@ -20,9 +20,9 @@ abstract final class AppColors {
   static const Color success = Color(0xFF2E7D32);
   static const Color divider = Color(0xFFE0E0E0);
 
-  /// Premium gold CTA (onboarding + app-wide primary actions on dark UI).
-  static const Color signaraGold = Color(0xFFD4AF37);
-  static const Color signaraGoldShadow = Color(0x66D4AF37);
+  /// Signara cyan — matches ECG/heartbeat line in logo.
+  static const Color signaraGold = Color(0xFF00E5FF);
+  static const Color signaraGoldShadow = Color(0x6600E5FF);
 
   /// Complete Session / summary metrics (Material-style on dark UI).
   static const Color sessionMovementGreen = Color(0xFF4CAF50);

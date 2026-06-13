@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 class SignaraDashboardBackground extends StatelessWidget {
   const SignaraDashboardBackground({super.key});
 
-  static const Color _top = Color(0xFF1A2B1F);
-  static const Color _bottom = Color(0xFF0A0A0A);
+  static const Color _top = Color(0xFF0D1B2A);
+  static const Color _bottom = Color(0xFF060D18);
 
   @override
   Widget build(BuildContext context) {

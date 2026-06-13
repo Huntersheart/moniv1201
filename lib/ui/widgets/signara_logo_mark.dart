@@ -9,7 +9,7 @@ class SignaraBrandLogoMark extends StatelessWidget {
 
   final double size;
 
-  static const Color _green = Color(0xFF1B3022);
+  static const Color _green = Color(0xFF0D1B2A);
 
   @override
   Widget build(BuildContext context) {

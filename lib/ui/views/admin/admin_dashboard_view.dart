@@ -39,7 +39,7 @@ class _AdminDashboardViewState extends State<AdminDashboardView>
         statusBarBrightness: Brightness.dark,
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFF0C0C0C),
+        backgroundColor: const Color(0xFF0A0F1E),
         body: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -73,7 +73,7 @@ class _AdminHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final ctrl = Get.find<AdminController>();
     return Container(
-      color: const Color(0xFF121212),
+      color: const Color(0xFF060D18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -202,7 +202,7 @@ class _UserCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
+        color: const Color(0xFF0D1B2A),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: user.isAdmin
@@ -405,7 +405,7 @@ class _SessionCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
+        color: const Color(0xFF0D1B2A),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
             color: Colors.white.withValues(alpha: 0.1)),

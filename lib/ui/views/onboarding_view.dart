@@ -39,7 +39,7 @@ class _OnboardingPage {
 }
 
 class _OnboardingViewState extends State<OnboardingView> {
-  static const Color _dotActive = Color(0xFF1B3022);
+  static const Color _dotActive = Color(0xFF0D1B2A);
   static const Color _dotInactive = Color(0xFFE0E0E0);
 
   static const List<_OnboardingPage> _pages = <_OnboardingPage>[
@@ -440,7 +440,7 @@ class _OnboardingDotsInline extends StatelessWidget {
 
   final int activeIndex;
 
-  static const Color _dotActive = Color(0xFF1B3022);
+  static const Color _dotActive = Color(0xFF0D1B2A);
   static const Color _dotInactive = Color(0xFFE0E0E0);
   static const int _count = 4;
 
@@ -469,7 +469,7 @@ class _OnboardingDotsInline extends StatelessWidget {
 class _HuntersHeartLogoMark extends StatelessWidget {
   const _HuntersHeartLogoMark();
 
-  static const Color _green = Color(0xFF1B3022);
+  static const Color _green = Color(0xFF0D1B2A);
   static const Color _gold = Color(0xFFD4AF37);
 
   @override
