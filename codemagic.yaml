@@ -13,20 +13,42 @@ workflows:
     environment:
       groups:
         - appstore
-      flutter: 3.44.0
+      flutter: 3.44.2
       xcode: latest
       cocoapods: default
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.signaracollar.app
     scripts:
+      - name: Create ExportOptions
+        script: |
+          cat > /Users/builder/export_options.plist << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store</string>
+            <key>teamID</key>
+            <string>C9MQ4Z73C2</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>com.signaracollar.app</key>
+              <string>Signara_Collar_App_Store</string>
+            </dict>
+          </dict>
+          </plist>
+          EOF
       - name: Get Flutter packages
         script: flutter pub get
       - name: Install CocoaPods
         script: cd ios && pod install
       - name: Build iOS release
         script: |
-          flutter build ipa --release
+          flutter build ipa --release \
+            --export-options-plist=/Users/builder/export_options.plist
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
