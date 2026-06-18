@@ -24,31 +24,16 @@ workflows:
         script: flutter pub get
       - name: Install CocoaPods
         script: cd ios && pod install
-      - name: Create ExportOptions
+      - name: Set Manual Signing
         script: |
-          cat > /Users/builder/export_options.plist << EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>app-store-connect</string>
-            <key>teamID</key>
-            <string>C9MQ4Z73C2</string>
-            <key>signingStyle</key>
-            <string>manual</string>
-            <key>provisioningProfiles</key>
-            <dict>
-              <key>com.signaracollar.app</key>
-              <string>Signara_Collar_App_Store</string>
-            </dict>
-          </dict>
-          </plist>
-          EOF
+          sed -i '' 's/CODE_SIGN_STYLE = Automatic/CODE_SIGN_STYLE = Manual/g' ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' '/DEVELOPMENT_TEAM = C9MQ4Z73C2;/{
+            /PROVISIONING_PROFILE_SPECIFIER/!a\
+            				PROVISIONING_PROFILE_SPECIFIER = "Signara_Collar_App_Store";
+          }' ios/Runner.xcodeproj/project.pbxproj
       - name: Build iOS release
         script: |
-          flutter build ipa --release \
-            --export-options-plist=/Users/builder/export_options.plist
+          flutter build ipa --release
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
