@@ -16,50 +16,17 @@ workflows:
       flutter: 3.44.2
       xcode: latest
       cocoapods: default
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.signaracollar.app
+    ios_signing:
+      distribution_type: app_store
+      bundle_identifier: com.signaracollar.app
     scripts:
       - name: Get Flutter packages
         script: flutter pub get
       - name: Install CocoaPods
         script: cd ios && pod install
-      - name: Set Manual Signing
-        script: |
-          sed -i '' 's/CODE_SIGN_STYLE = Automatic/CODE_SIGN_STYLE = Manual/g' ios/Runner.xcodeproj/project.pbxproj
-          sed -i '' '/DEVELOPMENT_TEAM = C9MQ4Z73C2;/{
-            /PROVISIONING_PROFILE_SPECIFIER/!a\
-            				PROVISIONING_PROFILE_SPECIFIER = "Signara_Collar_App_Store";
-          }' ios/Runner.xcodeproj/project.pbxproj
       - name: Build iOS release
         script: |
-          flutter build ipa --release --no-codesign
-          sed -i '' 's/CODE_SIGN_STYLE = Automatic/CODE_SIGN_STYLE = Manual/g' ios/Runner.xcodeproj/project.pbxproj
-          xcodebuild -workspace ios/Runner.xcworkspace \
-            -scheme Runner \
-            -configuration Release \
-            -archivePath build/ios/archive/Runner.xcarchive \
-            CODE_SIGN_STYLE=Manual \
-            PROVISIONING_PROFILE_SPECIFIER="Signara_Collar_App_Store" \
-            DEVELOPMENT_TEAM=C9MQ4Z73C2 \
-            archive
-          xcodebuild -exportArchive \
-            -archivePath build/ios/archive/Runner.xcarchive \
-            -exportPath build/ios/ipa \
-            -exportOptionsPlist /Users/builder/export_options.plist
-          sed -i '' 's/CODE_SIGN_STYLE = Automatic/CODE_SIGN_STYLE = Manual/g' ios/Runner.xcodeproj/project.pbxproj
-          xcodebuild -workspace ios/Runner.xcworkspace \
-            -scheme Runner \
-            -configuration Release \
-            -archivePath build/ios/archive/Runner.xcarchive \
-            CODE_SIGN_STYLE=Manual \
-            PROVISIONING_PROFILE_SPECIFIER="Signara_Collar_App_Store" \
-            DEVELOPMENT_TEAM=C9MQ4Z73C2 \
-            archive
-          xcodebuild -exportArchive \
-            -archivePath build/ios/archive/Runner.xcarchive \
-            -exportPath build/ios/ipa \
-            -exportOptionsPlist /Users/builder/export_options.plist
+          flutter build ipa --release
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
