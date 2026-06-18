@@ -24,10 +24,6 @@ workflows:
         script: flutter pub get
       - name: Install CocoaPods
         script: cd ios && pod install
-      - name: Build iOS release
-        script: |
-          flutter build ipa --release \
-            --export-options-plist=/Users/builder/export_options.plist
       - name: Create ExportOptions
         script: |
           cat > /Users/builder/export_options.plist << EOF
@@ -49,12 +45,10 @@ workflows:
           </dict>
           </plist>
           EOF
-      - name: Export IPA
+      - name: Build iOS release
         script: |
-          xcodebuild -exportArchive \
-            -archivePath build/ios/archive/Runner.xcarchive \
-            -exportPath build/ios/ipa \
-            -exportOptionsPlist /Users/builder/export_options.plist
+          flutter build ipa --release \
+            --export-options-plist=/Users/builder/export_options.plist
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
@@ -62,7 +56,5 @@ workflows:
       app_store_connect:
         key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
         issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-        submit_to_testflight: true
         api_key: $APP_STORE_CONNECT_PRIVATE_KEY
         submit_to_testflight: true
