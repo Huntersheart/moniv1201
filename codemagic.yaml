@@ -20,6 +20,14 @@ workflows:
         distribution_type: app_store
         bundle_identifier: com.signaracollar.app
     scripts:
+      - name: Get Flutter packages
+        script: flutter pub get
+      - name: Install CocoaPods
+        script: cd ios && pod install
+      - name: Build iOS release
+        script: |
+          flutter build ipa --release \
+            --export-options-plist=/Users/builder/export_options.plist
       - name: Create ExportOptions
         script: |
           cat > /Users/builder/export_options.plist << EOF
@@ -28,7 +36,7 @@ workflows:
           <plist version="1.0">
           <dict>
             <key>method</key>
-            <string>app-store</string>
+            <string>app-store-connect</string>
             <key>teamID</key>
             <string>C9MQ4Z73C2</string>
             <key>signingStyle</key>
@@ -41,21 +49,12 @@ workflows:
           </dict>
           </plist>
           EOF
-      - name: Get Flutter packages
-        script: flutter pub get
-      - name: Install CocoaPods
-        script: cd ios && pod install
-      - name: Build iOS release
+      - name: Export IPA
         script: |
-          flutter build ipa --release \
-            --no-codesign
           xcodebuild -exportArchive \
             -archivePath build/ios/archive/Runner.xcarchive \
             -exportPath build/ios/ipa \
-            -exportOptionsPlist /Users/builder/export_options.plist \
-            CODE_SIGN_STYLE=Manual \
-            PROVISIONING_PROFILE_SPECIFIER="Signara_Collar_App_Store" \
-            DEVELOPMENT_TEAM=C9MQ4Z73C2
+            -exportOptionsPlist /Users/builder/export_options.plist
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
@@ -63,5 +62,7 @@ workflows:
       app_store_connect:
         key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
         issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        submit_to_testflight: true
         api_key: $APP_STORE_CONNECT_PRIVATE_KEY
         submit_to_testflight: true
