@@ -15,12 +15,12 @@ workflows:
     environment:
       groups:
         - appstore
-      flutter: 3.11.0
+      flutter: 3.24.0
       xcode: latest
       cocoapods: default
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.signaracollar.app
+    ios_signing:
+      distribution_type: app_store
+      bundle_identifier: com.signaracollar.app
 
     scripts:
       - name: Get Flutter packages
