@@ -17,7 +17,7 @@ const Color _kCalmingSelectedGold = Color(0xFFB08D31);
 const Color _kMovement = Color(0xFF16D351);
 const Color _kComfort = Color(0xFF8B44F7);
 const Color _kEnergy = Color(0xFFD4AF37);
-const Color _kRingGreen = Color(0xFF3D6B4F);
+const Color _kRingGreen = Color(0xFF00E5FF); // cyan — matches Signara logo ECG line
 
 /// Session Log row icons (pulse / moon / lightning).
 abstract final class _SessionLogIcons {

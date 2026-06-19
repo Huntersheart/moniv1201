@@ -1041,7 +1041,7 @@ class _DogSelectCard extends StatelessWidget {
   final _DogRow data;
   final bool selected;
 
-  static const Color _ringGreen = Color(0xFF3D6B4F);
+  static const Color _ringGreen = Color(0xFF00E5FF);
 
   @override
   Widget build(BuildContext context) {
@@ -1256,7 +1256,7 @@ class _DogDetailDialogContent extends StatelessWidget {
 
   final DogModel initialDog;
 
-  static const Color _ringGreen = Color(0xFF3D6B4F);
+  static const Color _ringGreen = Color(0xFF00E5FF);
 
   static const TextStyle _dialogTextBase = TextStyle(
     decoration: TextDecoration.none,

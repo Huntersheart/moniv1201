@@ -182,7 +182,7 @@ class _AccountReadyOverlay extends StatelessWidget {
 
   final VoidCallback onContinue;
 
-  static const Color _gold = Color(0xFFC5A459);
+  static const Color _gold = Color(0xFF00E5FF); // cyan
 
   @override
   Widget build(BuildContext context) {
