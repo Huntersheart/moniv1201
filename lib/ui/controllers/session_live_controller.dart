@@ -13,6 +13,7 @@ import '../../data/repositories/dog_repository.dart';
 import '../../data/repositories/session_repository.dart';
 import 'auth_controller.dart';
 import 'ble_controller.dart';
+import 'vest_ble_controller.dart';
 import 'dashboard_controller.dart';
 
 class SessionLiveController extends GetxController {
@@ -132,6 +133,9 @@ class SessionLiveController extends GetxController {
   // ── BLE helper ──────────────────────────────────────────
   BleController? get _ble =>
       Get.isRegistered<BleController>() ? Get.find<BleController>() : null;
+
+  VestBleController? get _vestBle =>
+      Get.isRegistered<VestBleController>() ? Get.find<VestBleController>() : null;
 
   /// Envía comando haptico al collar si está conectado.
   /// preset: 0=Calm, 1=Moderate, 2=Strong
@@ -272,6 +276,7 @@ class SessionLiveController extends GetxController {
     _stopSessionWatch();
     _timer?.cancel();
     unawaited(_ble?.endSession());
+    unawaited(_vestBle?.endSession());
     final session = activeSession.value;
     if (session != null && session.status == 'active') {
       try {
@@ -322,6 +327,10 @@ class SessionLiveController extends GetxController {
       // BLE: conectar al collar automaticamente si es modulo collar
       if (moduleType == 'collar') {
         unawaited(_ble?.startSession());
+      }
+      // BLE: conectar al vest automaticamente si es modulo vest
+      if (moduleType == 'vest') {
+        unawaited(_vestBle?.startSession());
       }
     } catch (e) {
       debugPrint('[SessionLive] start error: $e');
@@ -453,6 +462,7 @@ class SessionLiveController extends GetxController {
     _stopSessionWatch();
     _timer?.cancel();
     unawaited(_ble?.endSession());
+    unawaited(_vestBle?.endSession());
     final session = activeSession.value;
     if (session == null) {
       Get.offAllNamed(AppRoutes.home);

@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../controllers/ble_controller.dart';
+import '../controllers/vest_ble_controller.dart';
 import '../controllers/dashboard_controller.dart';
 import '../controllers/session_live_controller.dart';
 
@@ -171,43 +172,37 @@ class _SessionLiveViewState extends State<SessionLiveView> {
                           label = 'Collar not found — make sure it\'s on';
                           break;
                       }
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: Center(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: dot.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: dot.withValues(alpha: 0.5), width: 1),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 7, height: 7,
-                                  decoration: BoxDecoration(
-                                    color: dot,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [BoxShadow(color: dot.withValues(alpha: 0.8), blurRadius: 6)],
-                                  ),
-                                ),
-                                const SizedBox(width: 7),
-                                Text(
-                                  label,
-                                  style: TextStyle(
-                                    color: dot,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    decoration: TextDecoration.none,
-                                    letterSpacing: 0.2,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
+                      return _BleStatusBar(dot: dot, label: label);
+                    }),
+                  // ── BLE status bar (Vest only) ───────────────────────
+                  if (Get.isRegistered<VestBleController>())
+                    Obx(() {
+                      final args = Get.arguments;
+                      final isVest = args is Map && (args['moduleTitle'] as String? ?? '').toLowerCase().contains('vest');
+                      if (!isVest) return const SizedBox.shrink();
+                      final ble = Get.find<VestBleController>();
+                      final s = ble.status.value;
+                      Color dot;
+                      String label;
+                      switch (s) {
+                        case VestBleStatus.connected:
+                          dot = const Color(0xFF16D351);
+                          label = 'Vest connected';
+                          break;
+                        case VestBleStatus.connecting:
+                          dot = Colors.orange;
+                          label = 'Connecting vest...';
+                          break;
+                        case VestBleStatus.scanning:
+                          dot = Colors.orange;
+                          label = 'Looking for vest...';
+                          break;
+                        case VestBleStatus.disconnected:
+                          dot = Colors.red.shade400;
+                          label = 'Vest not found — make sure it\'s on';
+                          break;
+                      }
+                      return _BleStatusBar(dot: dot, label: label);
                     }),
                   Expanded(
                     child: Obx(() {
@@ -994,6 +989,54 @@ class _OptionRow extends StatelessWidget {
           }),
         ),
       ],
+    );
+  }
+}
+
+// ── BLE status bar (reutilizable para Collar y Vest) ─────────────────────────
+class _BleStatusBar extends StatelessWidget {
+  const _BleStatusBar({required this.dot, required this.label});
+  final Color dot;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          decoration: BoxDecoration(
+            color: dot.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: dot.withValues(alpha: 0.5), width: 1),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 7, height: 7,
+                decoration: BoxDecoration(
+                  color: dot,
+                  shape: BoxShape.circle,
+                  boxShadow: [BoxShadow(color: dot.withValues(alpha: 0.8), blurRadius: 6)],
+                ),
+              ),
+              const SizedBox(width: 7),
+              Text(
+                label,
+                style: TextStyle(
+                  color: dot,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  decoration: TextDecoration.none,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
