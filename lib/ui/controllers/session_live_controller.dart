@@ -65,9 +65,24 @@ class SessionLiveController extends GetxController {
     unawaited(ble.sendStorm(preset: preset));
   }
 
+  // ── Collar metrics ──────────────────────────────────────
   final movement = 5.0.obs;
   final comfort = 5.0.obs;
   final energy = 5.0.obs;
+
+  // ── Vest metrics (1–5 buttons) ─────────────────────────
+  // stability: 1–5  (1=very unstable, 5=very stable)
+  final vestStability = 3.obs;
+  // weightBearing: 0=Normal, 1=Shifting, 2=Avoiding
+  final vestWeightBearing = 0.obs;
+
+  // ── Hip metrics ─────────────────────────────────────────
+  // mobility: 1–5  (1=very limited, 5=full mobility)
+  final hipMobility = 3.obs;
+  // painSigns: 0=None, 1=Mild, 2=Moderate, 3=Severe
+  final hipPainSigns = 0.obs;
+  // satStoodAlone: 0=unknown, 1=yes, 2=no
+  final hipSatStoodAlone = 0.obs;
 
   final limpLevel = 0.obs;
   final responseLevel = 0.obs;
@@ -199,6 +214,11 @@ class SessionLiveController extends GetxController {
         movement: movement.value,
         comfort: comfort.value,
         energy: energy.value,
+        vestStability: vestStability.value,
+        vestWeightBearing: vestWeightBearing.value,
+        hipMobility: hipMobility.value,
+        hipPainSigns: hipPainSigns.value,
+        hipSatStoodAlone: hipSatStoodAlone.value,
         limpLevel: limpLevel.value,
         responseLevel: responseLevel.value,
         calmingLevel: calmingLevel.value,
@@ -448,6 +468,11 @@ class SessionLiveController extends GetxController {
         movement: movement.value,
         comfort: comfort.value,
         energy: energy.value,
+        vestStability: vestStability.value,
+        vestWeightBearing: vestWeightBearing.value,
+        hipMobility: hipMobility.value,
+        hipPainSigns: hipPainSigns.value,
+        hipSatStoodAlone: hipSatStoodAlone.value,
         limpLevel: limpLevel.value,
         responseLevel: responseLevel.value,
         calmingLevel: calmingLevel.value,

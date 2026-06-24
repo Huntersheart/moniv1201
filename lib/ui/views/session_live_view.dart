@@ -146,8 +146,8 @@ class _SessionLiveViewState extends State<SessionLiveView> {
                       ],
                     ),
                   ),
-                  // ── BLE status bar ──────────────────────────────
-                  if (Get.isRegistered<BleController>())
+                  // ── BLE status bar (Collar only) ─────────────────────
+                  if (Get.isRegistered<BleController>() && _hideHapticQuestionnaire(_c) == false)
                     Obx(() {
                       final ble = Get.find<BleController>();
                       final s = ble.status.value;
@@ -251,14 +251,46 @@ class _SessionLiveViewState extends State<SessionLiveView> {
                               ),
                             ),
                             const SizedBox(height: 12),
-                            _SessionLogCard(
-                              movement: _c.movement.value,
-                              comfort: _c.comfort.value,
-                              energy: _c.energy.value,
-                              onMovement: (v) => _c.movement.value = v,
-                              onComfort: (v) => _c.comfort.value = v,
-                              onEnergy: (v) => _c.energy.value = v,
-                            ),
+                            // ── Per-module session log ───────────────────
+                            Obx(() {
+                              final moduleType = _c.activeSession.value?.moduleType
+                                  ?? (() {
+                                final args = Get.arguments;
+                                if (args is Map && args['moduleTitle'] is String) {
+                                  final t = (args['moduleTitle'] as String).toLowerCase();
+                                  if (t.contains('vest')) return 'vest';
+                                  if (t.contains('hip')) return 'hip';
+                                }
+                                return 'collar';
+                              })();
+                              if (moduleType == 'vest') {
+                                return _VestLogCard(
+                                  stability: _c.vestStability.value,
+                                  onStability: (v) => _c.vestStability.value = v,
+                                  weightBearing: _c.vestWeightBearing.value,
+                                  onWeightBearing: (v) => _c.vestWeightBearing.value = v,
+                                );
+                              }
+                              if (moduleType == 'hip') {
+                                return _HipLogCard(
+                                  mobility: _c.hipMobility.value,
+                                  onMobility: (v) => _c.hipMobility.value = v,
+                                  painSigns: _c.hipPainSigns.value,
+                                  onPainSigns: (v) => _c.hipPainSigns.value = v,
+                                  satStoodAlone: _c.hipSatStoodAlone.value,
+                                  onSatStoodAlone: (v) => _c.hipSatStoodAlone.value = v,
+                                );
+                              }
+                              // Collar (default)
+                              return _SessionLogCard(
+                                movement: _c.movement.value,
+                                comfort: _c.comfort.value,
+                                energy: _c.energy.value,
+                                onMovement: (v) => _c.movement.value = v,
+                                onComfort: (v) => _c.comfort.value = v,
+                                onEnergy: (v) => _c.energy.value = v,
+                              );
+                            }),
                             const SizedBox(height: 18),
                             _LimpCard(
                               value: _c.limpLevel.value,
@@ -691,6 +723,277 @@ class _SessionLogCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ── Vest Session Log ──────────────────────────────────────────────────────────
+class _VestLogCard extends StatelessWidget {
+  const _VestLogCard({
+    required this.stability,
+    required this.onStability,
+    required this.weightBearing,
+    required this.onWeightBearing,
+  });
+
+  final int stability;
+  final ValueChanged<int> onStability;
+  final int weightBearing;
+  final ValueChanged<int> onWeightBearing;
+
+  @override
+  Widget build(BuildContext context) {
+    return _GoldBorderCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _ScoreRow(
+            label: 'Stability',
+            value: stability,
+            max: 5,
+            color: const Color(0xFF16D351),
+            low: 'Very unstable',
+            high: 'Very stable',
+            onChanged: onStability,
+          ),
+          const Divider(height: 28, color: Colors.white12),
+          _OptionRow(
+            label: 'Weight Bearing',
+            options: const ['Normal', 'Shifting', 'Avoiding'],
+            selected: weightBearing,
+            onChanged: onWeightBearing,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Hip Session Log ───────────────────────────────────────────────────────────
+class _HipLogCard extends StatelessWidget {
+  const _HipLogCard({
+    required this.mobility,
+    required this.onMobility,
+    required this.painSigns,
+    required this.onPainSigns,
+    required this.satStoodAlone,
+    required this.onSatStoodAlone,
+  });
+
+  final int mobility;
+  final ValueChanged<int> onMobility;
+  final int painSigns;
+  final ValueChanged<int> onPainSigns;
+  final int satStoodAlone;
+  final ValueChanged<int> onSatStoodAlone;
+
+  @override
+  Widget build(BuildContext context) {
+    return _GoldBorderCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _ScoreRow(
+            label: 'Mobility',
+            value: mobility,
+            max: 5,
+            color: const Color(0xFF8B44F7),
+            low: 'Very limited',
+            high: 'Full mobility',
+            onChanged: onMobility,
+          ),
+          const Divider(height: 28, color: Colors.white12),
+          _OptionRow(
+            label: 'Pain Signs',
+            options: const ['None', 'Mild', 'Moderate', 'Severe'],
+            selected: painSigns,
+            onChanged: onPainSigns,
+          ),
+          const Divider(height: 28, color: Colors.white12),
+          _OptionRow(
+            label: 'Sat/Stood alone',
+            options: const ['—', 'Yes', 'No'],
+            selected: satStoodAlone,
+            onChanged: onSatStoodAlone,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Shared subwidgets ─────────────────────────────────────────────────────────
+
+/// 1–N score buttons row (used by Vest & Hip log cards).
+class _ScoreRow extends StatelessWidget {
+  const _ScoreRow({
+    required this.label,
+    required this.value,
+    required this.max,
+    required this.color,
+    required this.low,
+    required this.high,
+    required this.onChanged,
+  });
+
+  final String label;
+  final int value;
+  final int max;
+  final Color color;
+  final String low;
+  final String high;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                decoration: TextDecoration.none,
+              ),
+            ),
+            Text(
+              '$value / $max',
+              style: TextStyle(
+                color: color,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                decoration: TextDecoration.none,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: List.generate(max, (i) {
+            final score = i + 1;
+            final selected = score == value;
+            return Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(right: i < max - 1 ? 6 : 0),
+                child: GestureDetector(
+                  onTap: () => onChanged(score),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    height: 38,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: selected ? color : const Color(0xFF0A0F1E),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: selected ? color : Colors.white.withValues(alpha: 0.25),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: Text(
+                      '$score',
+                      style: TextStyle(
+                        color: selected ? Colors.black : Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        decoration: TextDecoration.none,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(low, style: _caption),
+            Text(high, style: _caption),
+          ],
+        ),
+      ],
+    );
+  }
+
+  static final _caption = TextStyle(
+    color: Colors.white.withValues(alpha: 0.4),
+    fontSize: 11,
+    decoration: TextDecoration.none,
+  );
+}
+
+/// Option chips row (used by Vest & Hip log cards).
+class _OptionRow extends StatelessWidget {
+  const _OptionRow({
+    required this.label,
+    required this.options,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final String label;
+  final List<String> options;
+  final int selected;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            decoration: TextDecoration.none,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: List.generate(options.length, (i) {
+            final sel = i == selected;
+            return Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(right: i < options.length - 1 ? 8 : 0),
+                child: GestureDetector(
+                  onTap: () => onChanged(i),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: sel ? AppColors.signaraGold : const Color(0xFF0A0F1E),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: sel ? AppColors.signaraGold : Colors.white.withValues(alpha: 0.25),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: Text(
+                      options[i],
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: sel ? Colors.black : Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                        decoration: TextDecoration.none,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ),
+      ],
     );
   }
 }
