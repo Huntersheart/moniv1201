@@ -74,8 +74,10 @@ class SessionLiveController extends GetxController {
   // ── Vest metrics (1–5 buttons) ─────────────────────────
   // stability: 1–5  (1=very unstable, 5=very stable)
   final vestStability = 3.obs;
-  // weightBearing: 0=Normal, 1=Shifting, 2=Avoiding
+  // vestWeightBearing: 0=Normal, 1=Shifting, 2=Avoiding
   final vestWeightBearing = 0.obs;
+  // vestPainSigns: 0=None, 1=Mild, 2=Moderate, 3=Severe
+  final vestPainSigns = 0.obs;
 
   // ── Hip metrics ─────────────────────────────────────────
   // mobility: 1–5  (1=very limited, 5=full mobility)
@@ -220,6 +222,7 @@ class SessionLiveController extends GetxController {
         energy: energy.value,
         vestStability: vestStability.value,
         vestWeightBearing: vestWeightBearing.value,
+        vestPainSigns: vestPainSigns.value,
         hipMobility: hipMobility.value,
         hipPainSigns: hipPainSigns.value,
         hipSatStoodAlone: hipSatStoodAlone.value,
@@ -480,6 +483,7 @@ class SessionLiveController extends GetxController {
         energy: energy.value,
         vestStability: vestStability.value,
         vestWeightBearing: vestWeightBearing.value,
+        vestPainSigns: vestPainSigns.value,
         hipMobility: hipMobility.value,
         hipPainSigns: hipPainSigns.value,
         hipSatStoodAlone: hipSatStoodAlone.value,

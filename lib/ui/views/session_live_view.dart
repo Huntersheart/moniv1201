@@ -264,6 +264,8 @@ class _SessionLiveViewState extends State<SessionLiveView> {
                                   onStability: (v) => _c.vestStability.value = v,
                                   weightBearing: _c.vestWeightBearing.value,
                                   onWeightBearing: (v) => _c.vestWeightBearing.value = v,
+                                  painSigns: _c.vestPainSigns.value,
+                                  onPainSigns: (v) => _c.vestPainSigns.value = v,
                                 );
                               }
                               if (moduleType == 'hip') {
@@ -729,12 +731,16 @@ class _VestLogCard extends StatelessWidget {
     required this.onStability,
     required this.weightBearing,
     required this.onWeightBearing,
+    required this.painSigns,
+    required this.onPainSigns,
   });
 
   final int stability;
   final ValueChanged<int> onStability;
   final int weightBearing;
   final ValueChanged<int> onWeightBearing;
+  final int painSigns;
+  final ValueChanged<int> onPainSigns;
 
   @override
   Widget build(BuildContext context) {
@@ -757,6 +763,13 @@ class _VestLogCard extends StatelessWidget {
             options: const ['Normal', 'Shifting', 'Avoiding'],
             selected: weightBearing,
             onChanged: onWeightBearing,
+          ),
+          const Divider(height: 28, color: Colors.white12),
+          _OptionRow(
+            label: 'Pain Signs',
+            options: const ['None', 'Mild', 'Moderate', 'Severe'],
+            selected: painSigns,
+            onChanged: onPainSigns,
           ),
         ],
       ),
