@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
-/// UUIDs deben coincidir exactamente con signara_vest_v1_ble.ino
+/// UUIDs deben coincidir exactamente con SignaraVest.ino
 const String _kServiceUuid = 'a1240001-abcd-1234-5678-a12400000000';
 const String _kCmdUuid     = 'a1240002-abcd-1234-5678-a12400000000';
 const String _kStatusUuid  = 'a1240003-abcd-1234-5678-a12400000000';
@@ -13,16 +13,29 @@ const String _kDeviceName  = 'SIGNARA_VEST';
 const int _kCmdPing = 0x01;
 
 /// Datos del vest recibidos via BLE (STATUS_UUID Notify cada 2s)
+///
+/// JSON del firmware:
+/// {"hr":%d,"spo2":%d,"hrv":%d,"spo2v":%d,
+///  "tc":%.2f,"ta":%.2f,"hum":%.2f,
+///  "ax":%.3f,"ay":%.3f,"az":%.3f,
+///  "gx":%.3f,"gy":%.3f,"gz":%.3f,
+///  "fsl":%d,"fsr":%d}
 class VestStatus {
   final int    heartRate;    // BPM  (-1 = sin contacto)
-  final int    spo2;        // %    (-1 = sin contacto)
+  final int    spo2;         // %    (-1 = sin contacto)
   final bool   hrValid;
   final bool   spo2Valid;
-  final double tempBody;    // TMP117 °C
-  final double tempAmbient; // BME280 °C
-  final double humidity;    // %
-  final double ax, ay, az;  // m/s²
-  final double gx, gy, gz;  // rad/s
+  final double tempBody;     // TMP117 °C
+  final double tempAmbient;  // BME280 °C
+  final double humidity;     // %
+  // LSM6DSOX
+  final double ax, ay, az;   // m/s²
+  final double gx, gy, gz;   // rad/s
+  // ADS1115 + FSR 406 — escápula izquierda / derecha
+  // Rango raw: 0–32767 (ADS1115 16-bit con GAIN_ONE)
+  // Sin contacto: ~2900 (ruido de entrada flotante)
+  final int fsrLeft;
+  final int fsrRight;
 
   const VestStatus({
     required this.heartRate,
@@ -34,25 +47,38 @@ class VestStatus {
     required this.humidity,
     required this.ax, required this.ay, required this.az,
     required this.gx, required this.gy, required this.gz,
+    required this.fsrLeft,
+    required this.fsrRight,
   });
 
   bool get hasContact => heartRate != -1;
 
+  /// Asimetría de carga entre escápulas (0.0 = simétrico, 1.0 = todo en un lado)
+  /// Útil para detectar compensación postural / cojera de Hunter.
+  double get scapularAsymmetry {
+    final total = fsrLeft + fsrRight;
+    if (total == 0) return 0;
+    final diff = (fsrLeft - fsrRight).abs();
+    return diff / total;
+  }
+
   factory VestStatus.fromJson(Map<String, dynamic> j) {
     return VestStatus(
-      heartRate:    (j['hr']   as num?)?.toInt()    ?? -1,
-      spo2:         (j['spo2'] as num?)?.toInt()    ?? -1,
-      hrValid:      ((j['hrv']   as num?)?.toInt() ?? 0) == 1,
-      spo2Valid:    ((j['spo2v'] as num?)?.toInt() ?? 0) == 1,
-      tempBody:     (j['tc']  as num?)?.toDouble() ?? -999,
-      tempAmbient:  (j['ta']  as num?)?.toDouble() ?? -999,
-      humidity:     (j['hum'] as num?)?.toDouble() ?? -999,
+      heartRate:    (j['hr']    as num?)?.toInt()    ?? -1,
+      spo2:         (j['spo2']  as num?)?.toInt()    ?? -1,
+      hrValid:      ((j['hrv']  as num?)?.toInt()    ?? 0) == 1,
+      spo2Valid:    ((j['spo2v'] as num?)?.toInt()   ?? 0) == 1,
+      tempBody:     (j['tc']    as num?)?.toDouble() ?? -999,
+      tempAmbient:  (j['ta']    as num?)?.toDouble() ?? -999,
+      humidity:     (j['hum']   as num?)?.toDouble() ?? -999,
       ax: (j['ax'] as num?)?.toDouble() ?? 0,
       ay: (j['ay'] as num?)?.toDouble() ?? 0,
       az: (j['az'] as num?)?.toDouble() ?? 0,
       gx: (j['gx'] as num?)?.toDouble() ?? 0,
       gy: (j['gy'] as num?)?.toDouble() ?? 0,
       gz: (j['gz'] as num?)?.toDouble() ?? 0,
+      fsrLeft:  (j['fsl'] as num?)?.toInt() ?? 0,
+      fsrRight: (j['fsr'] as num?)?.toInt() ?? 0,
     );
   }
 }

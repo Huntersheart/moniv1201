@@ -20,11 +20,194 @@ const Color _kComfort = Color(0xFF8B44F7);
 const Color _kEnergy = Color(0xFFD4AF37);
 const Color _kRingGreen = Color(0xFF00E5FF); // cyan — matches Signara logo ECG line
 
+// Vest sensor card accent colors
+const Color _kHrColor    = Color(0xFFFF4C6A);
+const Color _kSpo2Color  = Color(0xFF00BFFF);
+const Color _kTempColor  = Color(0xFFFFB347);
+const Color _kFsrColor   = Color(0xFF9B59B6);
+const Color _kImuColor   = Color(0xFF1ABC9C);
+
+// ── Pain Assessment logic ─────────────────────────────────────────────────────
+
+enum PainLevel { none, possible, likely }
+
+class _PainAssessment {
+  final PainLevel level;
+  final String headline;    // "No pain signs" / "Compensating right shoulder"
+  final String detail;      // plain-English explanation
+  final String shoulderLoad; // "Symmetric 3%" / "Off right 21%"
+  final String temperature;  // "Normal" / "Elevated"
+  final String heartRate;    // "Normal" / "High"
+  final String activity;     // "Resting" / "Active" / "Agitated"
+  final bool fsrAvailable;
+  final double fsrLeftPct;   // 0.0–1.0 for bar
+  final double fsrRightPct;
+  final bool rightOffloading;
+
+  const _PainAssessment({
+    required this.level,
+    required this.headline,
+    required this.detail,
+    required this.shoulderLoad,
+    required this.temperature,
+    required this.heartRate,
+    required this.activity,
+    required this.fsrAvailable,
+    required this.fsrLeftPct,
+    required this.fsrRightPct,
+    required this.rightOffloading,
+  });
+
+  Color get borderColor {
+    switch (level) {
+      case PainLevel.none:     return const Color(0xFF16D351);
+      case PainLevel.possible: return const Color(0xFFFFB347);
+      case PainLevel.likely:   return const Color(0xFFFF4C6A);
+    }
+  }
+
+  Color get accentColor => borderColor;
+
+  String get badgeText {
+    switch (level) {
+      case PainLevel.none:     return 'No signs';
+      case PainLevel.possible: return 'Possible';
+      case PainLevel.likely:   return 'Likely';
+    }
+  }
+
+  static _PainAssessment from(VestStatus s) {
+    // ── Asymmetry ───────────────────────────────────────────
+    final asym = s.scapularAsymmetry;
+    final total = s.fsrLeft + s.fsrRight;
+    final fsrAvail = total > 200; // skip floating-input noise
+
+    String shoulderLoad;
+    int asymScore = 0;
+    bool rightOffloading = false;
+    double fsrL = 0, fsrR = 0;
+    if (!fsrAvail) {
+      shoulderLoad = '—';
+    } else {
+      final pct = (asym * 100).round();
+      rightOffloading = s.fsrLeft > s.fsrRight;
+      fsrL = (s.fsrLeft / 20000).clamp(0.0, 1.0);
+      fsrR = (s.fsrRight / 20000).clamp(0.0, 1.0);
+      if (asym < 0.10) {
+        shoulderLoad = 'Symmetric  $pct%';
+      } else {
+        final side = rightOffloading ? 'right' : 'left';
+        shoulderLoad = 'Off $side  $pct%';
+        asymScore = asym < 0.25 ? 1 : 2;
+      }
+    }
+
+    // ── Temperature ─────────────────────────────────────────
+    String tempLabel;
+    int tempScore = 0;
+    if (s.tempBody <= -900) {
+      tempLabel = '—';
+    } else if (s.tempBody < 39.0) {
+      tempLabel = 'Normal';
+    } else if (s.tempBody < 39.5) {
+      tempLabel = 'Elevated';
+      tempScore = 1;
+    } else {
+      tempLabel = 'High — ${s.tempBody.toStringAsFixed(1)} °C';
+      tempScore = 2;
+    }
+
+    // ── Heart rate ──────────────────────────────────────────
+    String hrLabel;
+    int hrScore = 0;
+    if (s.heartRate < 0 || !s.hrValid) {
+      hrLabel = '—';
+    } else if (s.heartRate <= 100) {
+      hrLabel = 'Normal';
+    } else if (s.heartRate <= 120) {
+      hrLabel = 'Elevated — ${s.heartRate} BPM';
+      hrScore = 1;
+    } else {
+      hrLabel = 'High — ${s.heartRate} BPM';
+      hrScore = 2;
+    }
+
+    // ── Activity (IMU magnitude) ─────────────────────────────
+    final aMag = _vec3Mag(s.ax, s.ay, s.az);
+    final gMag = _vec3Mag(s.gx, s.gy, s.gz);
+    String actLabel;
+    int actScore = 0;
+    if (aMag < 11 && gMag < 0.3) {
+      actLabel = 'Resting';
+    } else if (aMag < 14 && gMag < 1.0) {
+      actLabel = 'Active';
+    } else {
+      actLabel = 'Agitated';
+      actScore = 1;
+    }
+
+    // ── Overall pain level ──────────────────────────────────
+    final totalScore = asymScore + tempScore + hrScore + actScore;
+    PainLevel level;
+    String headline;
+    String detail;
+
+    if (totalScore == 0) {
+      level = PainLevel.none;
+      headline = 'Hunter feels good';
+      detail = 'Symmetric shoulder load · Vitals normal';
+    } else if (asymScore >= 2 || totalScore >= 3) {
+      level = PainLevel.likely;
+      if (asymScore >= 2) {
+        final side = rightOffloading ? 'right' : 'left';
+        headline = 'Strong $side shoulder avoidance';
+        detail = 'Heavy load shift — consider resting Hunter';
+      } else {
+        headline = 'Multiple pain indicators';
+        detail = 'Elevated vitals + movement changes — consider resting Hunter';
+      }
+    } else {
+      level = PainLevel.possible;
+      if (asymScore >= 1) {
+        final side = rightOffloading ? 'right' : 'left';
+        headline = 'Compensating $side shoulder';
+        detail = 'Hunter is shifting weight off the $side side — could indicate discomfort';
+      } else {
+        headline = 'Some discomfort signs';
+        detail = 'Mild elevated vitals — keep monitoring';
+      }
+    }
+
+    return _PainAssessment(
+      level: level,
+      headline: headline,
+      detail: detail,
+      shoulderLoad: shoulderLoad,
+      temperature: tempLabel,
+      heartRate: hrLabel,
+      activity: actLabel,
+      fsrAvailable: fsrAvail,
+      fsrLeftPct: fsrL,
+      fsrRightPct: fsrR,
+      rightOffloading: rightOffloading,
+    );
+  }
+
+  static double _vec3Mag(double x, double y, double z) {
+    final v = x * x + y * y + z * z;
+    if (v <= 0) return 0;
+    double r = v;
+    double last;
+    do { last = r; r = (r + v / r) / 2; } while ((r - last).abs() > 1e-6);
+    return r;
+  }
+}
+
 /// Session Log row icons (pulse / moon / lightning).
 abstract final class _SessionLogIcons {
   static const String movement = 'assets/icons/session_log_movement.png';
-  static const String comfort = 'assets/icons/session_log_comfort.png';
-  static const String energy = 'assets/icons/session_log_energy.png';
+  static const String comfort  = 'assets/icons/session_log_comfort.png';
+  static const String energy   = 'assets/icons/session_log_energy.png';
 }
 
 class _SessionBg extends StatelessWidget {
@@ -259,14 +442,25 @@ class _SessionLiveViewState extends State<SessionLiveView> {
                                 return 'collar';
                               })();
                               if (moduleType == 'vest') {
-                                return _VestLogCard(
-                                  stability: _c.vestStability.value,
-                                  onStability: (v) => _c.vestStability.value = v,
-                                  weightBearing: _c.vestWeightBearing.value,
-                                  onWeightBearing: (v) => _c.vestWeightBearing.value = v,
-                                  painSigns: _c.vestPainSigns.value,
-                                  onPainSigns: (v) => _c.vestPainSigns.value = v,
-                                );
+                                if (!Get.isRegistered<VestBleController>()) {
+                                  return const SizedBox.shrink();
+                                }
+                                return Obx(() {
+                                  final ble = Get.find<VestBleController>();
+                                  final vs = ble.vestStatus.value;
+                                  if (!ble.isConnected || vs == null) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  final pa = _PainAssessment.from(vs);
+                                  return Column(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      _VestPainCard(pa: pa),
+                                      const SizedBox(height: 14),
+                                      _VestSensorCollapsible(ble: ble, vs: vs),
+                                    ],
+                                  );
+                                });
                               }
                               if (moduleType == 'hip') {
                                 return _HipLogCard(
@@ -330,6 +524,409 @@ class _SessionLiveViewState extends State<SessionLiveView> {
     );
   }
 }
+
+// ── Vest Pain Assessment Card ─────────────────────────────────────────────────
+
+class _VestPainCard extends StatelessWidget {
+  const _VestPainCard({required this.pa});
+  final _PainAssessment pa;
+
+  Color _sigColor(String val) {
+    if (val == 'Normal' || val == 'Symmetric' || val.startsWith('Symmetric')) {
+      return const Color(0xFF16D351);
+    }
+    if (val.startsWith('High') || val.startsWith('Strong') || val.startsWith('Likely')) {
+      return const Color(0xFFFF4C6A);
+    }
+    if (val == '—' || val == 'Resting' || val == 'Active') return Colors.white70;
+    return const Color(0xFFFFB347);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _kCardBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: pa.borderColor.withValues(alpha: 0.6), width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ── Header row ───────────────────────────────────
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'PAIN',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.4),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                  decoration: TextDecoration.none,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: pa.accentColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: pa.accentColor.withValues(alpha: 0.5)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 7, height: 7,
+                      decoration: BoxDecoration(
+                        color: pa.accentColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      pa.badgeText,
+                      style: TextStyle(
+                        color: pa.accentColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        decoration: TextDecoration.none,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // ── Headline ─────────────────────────────────────
+          Text(
+            pa.headline,
+            style: TextStyle(
+              color: pa.accentColor,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              decoration: TextDecoration.none,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            pa.detail,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.5),
+              fontSize: 13,
+              height: 1.4,
+              decoration: TextDecoration.none,
+            ),
+          ),
+          const SizedBox(height: 14),
+          // ── Signal rows ───────────────────────────────────
+          _PainSignalRow(label: 'Shoulder load', value: pa.shoulderLoad, valueColor: _sigColor(pa.shoulderLoad)),
+          _PainSignalRow(label: 'Temperature',   value: pa.temperature,  valueColor: _sigColor(pa.temperature)),
+          _PainSignalRow(label: 'Heart rate',    value: pa.heartRate,    valueColor: _sigColor(pa.heartRate)),
+          _PainSignalRow(label: 'Activity',      value: pa.activity,     valueColor: _sigColor(pa.activity)),
+          // ── Shoulder balance bars ─────────────────────────
+          if (pa.fsrAvailable) ...[
+            const SizedBox(height: 12),
+            const Divider(height: 1, color: Colors.white12),
+            const SizedBox(height: 10),
+            Text(
+              'SHOULDER BALANCE',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.35),
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+                decoration: TextDecoration.none,
+              ),
+            ),
+            const SizedBox(height: 8),
+            _ShoulderBar(label: 'Left',  value: pa.fsrLeftPct,  offloading: !pa.rightOffloading),
+            const SizedBox(height: 5),
+            _ShoulderBar(label: 'Right', value: pa.fsrRightPct, offloading: pa.rightOffloading),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PainSignalRow extends StatelessWidget {
+  const _PainSignalRow({
+    required this.label,
+    required this.value,
+    required this.valueColor,
+  });
+  final String label;
+  final String value;
+  final Color  valueColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: Colors.white12, width: 1)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13, decoration: TextDecoration.none)),
+          Text(value,  style: TextStyle(color: valueColor, fontSize: 13, fontWeight: FontWeight.w700, decoration: TextDecoration.none)),
+        ],
+      ),
+    );
+  }
+}
+
+class _ShoulderBar extends StatelessWidget {
+  const _ShoulderBar({required this.label, required this.value, required this.offloading});
+  final String label;
+  final double value;
+  final bool   offloading;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 38,
+          child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _kFsrColor.withValues(alpha: 0.9), decoration: TextDecoration.none)),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: value,
+              minHeight: 9,
+              backgroundColor: Colors.white.withValues(alpha: 0.07),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                offloading ? _kFsrColor.withValues(alpha: 0.35) : _kFsrColor,
+              ),
+            ),
+          ),
+        ),
+        if (offloading) ...[
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFB347).withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: const Color(0xFFFFB347).withValues(alpha: 0.4)),
+            ),
+            child: const Text(
+              'offloading',
+              style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Color(0xFFFFB347), decoration: TextDecoration.none),
+            ),
+          ),
+        ] else
+          const SizedBox(width: 70),
+      ],
+    );
+  }
+}
+
+// ── Collapsible sensor data ───────────────────────────────────────────────────
+
+class _VestSensorCollapsible extends StatefulWidget {
+  const _VestSensorCollapsible({required this.ble, required this.vs});
+  final VestBleController ble;
+  final VestStatus vs;
+
+  @override
+  State<_VestSensorCollapsible> createState() => _VestSensorCollapsibleState();
+}
+
+class _VestSensorCollapsibleState extends State<_VestSensorCollapsible>
+    with SingleTickerProviderStateMixin {
+  bool _open = false;
+  late final AnimationController _ctrl;
+  late final Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 260));
+    _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _toggle() {
+    setState(() => _open = !_open);
+    _open ? _ctrl.forward() : _ctrl.reverse();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ble = widget.ble;
+    final vs  = widget.vs;
+    final aMag = _PainAssessment._vec3Mag(vs.ax, vs.ay, vs.az);
+    final gMag = _PainAssessment._vec3Mag(vs.gx, vs.gy, vs.gz);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: _kCardBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ── Toggle row ──────────────────────────────────
+          InkWell(
+            onTap: _toggle,
+            borderRadius: BorderRadius.circular(14),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Ver datos',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.45),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      decoration: TextDecoration.none,
+                    ),
+                  ),
+                  AnimatedRotation(
+                    turns: _open ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 260),
+                    child: Icon(Icons.keyboard_arrow_down_rounded,
+                        color: Colors.white.withValues(alpha: 0.3), size: 20),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // ── Expandable body ─────────────────────────────
+          SizeTransition(
+            sizeFactor: _anim,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Divider(height: 1, color: Colors.white12),
+                  const SizedBox(height: 12),
+                  // ── Vitals grid ──────────────────────────
+                  Row(children: [
+                    Expanded(child: _DataTile(label: 'Heart Rate', value: ble.hrValid ? '${ble.heartRate} BPM' : '—', color: _kHrColor)),
+                    const SizedBox(width: 8),
+                    Expanded(child: _DataTile(label: 'SpO₂',      value: ble.spo2Valid ? '${ble.spo2}%' : '—',       color: _kSpo2Color)),
+                  ]),
+                  const SizedBox(height: 8),
+                  Row(children: [
+                    Expanded(child: _DataTile(label: 'Body Temp', value: vs.tempBody > -900 ? '${vs.tempBody.toStringAsFixed(1)} °C' : '—', color: _kTempColor)),
+                    const SizedBox(width: 8),
+                    Expanded(child: _DataTile(label: 'Ambient',   value: vs.tempAmbient > -900 ? '${vs.tempAmbient.toStringAsFixed(1)} °C  ${vs.humidity.toStringAsFixed(0)}%' : '—', color: Colors.white38)),
+                  ]),
+                  const SizedBox(height: 12),
+                  // ── Movement ─────────────────────────────
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: _kImuColor.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(9),
+                      border: Border.all(color: _kImuColor.withValues(alpha: 0.18)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Movement', style: TextStyle(color: _kImuColor.withValues(alpha: 0.7), fontSize: 10, fontWeight: FontWeight.w600, decoration: TextDecoration.none)),
+                        const SizedBox(height: 4),
+                        Text(
+                          '|a| ${aMag.toStringAsFixed(2)} m/s²   |ω| ${gMag.toStringAsFixed(2)} rad/s',
+                          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700, decoration: TextDecoration.none),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'ax ${vs.ax.toStringAsFixed(2)}  ay ${vs.ay.toStringAsFixed(2)}  az ${vs.az.toStringAsFixed(2)}',
+                          style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 10, decoration: TextDecoration.none),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // ── Raw FSR ───────────────────────────────
+                  Text(
+                    'Shoulder pressure — raw',
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.4, decoration: TextDecoration.none),
+                  ),
+                  const SizedBox(height: 6),
+                  _RawRow(label: 'Left',       value: '${vs.fsrLeft}  /  32767'),
+                  _RawRow(label: 'Right',      value: '${vs.fsrRight}  /  32767'),
+                  _RawRow(label: 'Asymmetry',  value: '${(vs.scapularAsymmetry * 100).round()}%'),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DataTile extends StatelessWidget {
+  const _DataTile({required this.label, required this.value, required this.color});
+  final String label;
+  final String value;
+  final Color  color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 10, decoration: TextDecoration.none)),
+          const SizedBox(height: 4),
+          Text(value, style: TextStyle(color: color == Colors.white38 ? Colors.white70 : Colors.white, fontSize: 14, fontWeight: FontWeight.w700, decoration: TextDecoration.none)),
+        ],
+      ),
+    );
+  }
+}
+
+class _RawRow extends StatelessWidget {
+  const _RawRow({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.35), decoration: TextDecoration.none)),
+          Text(value,  style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.5),  fontFamily: 'monospace', decoration: TextDecoration.none)),
+        ],
+      ),
+    );
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// The rest of the file is UNCHANGED from the original session_live_view.dart
+// ──────────────────────────────────────────────────────────────────────────────
 
 class _GoldBorderCard extends StatelessWidget {
   const _GoldBorderCard({required this.child});
@@ -724,59 +1321,6 @@ class _SessionLogCard extends StatelessWidget {
   }
 }
 
-// ── Vest Session Log ──────────────────────────────────────────────────────────
-class _VestLogCard extends StatelessWidget {
-  const _VestLogCard({
-    required this.stability,
-    required this.onStability,
-    required this.weightBearing,
-    required this.onWeightBearing,
-    required this.painSigns,
-    required this.onPainSigns,
-  });
-
-  final int stability;
-  final ValueChanged<int> onStability;
-  final int weightBearing;
-  final ValueChanged<int> onWeightBearing;
-  final int painSigns;
-  final ValueChanged<int> onPainSigns;
-
-  @override
-  Widget build(BuildContext context) {
-    return _GoldBorderCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _ScoreRow(
-            label: 'Stability',
-            value: stability,
-            max: 5,
-            color: const Color(0xFF16D351),
-            low: 'Very unstable',
-            high: 'Very stable',
-            onChanged: onStability,
-          ),
-          const Divider(height: 28, color: Colors.white12),
-          _OptionRow(
-            label: 'Weight Bearing',
-            options: const ['Normal', 'Shifting', 'Avoiding'],
-            selected: weightBearing,
-            onChanged: onWeightBearing,
-          ),
-          const Divider(height: 28, color: Colors.white12),
-          _OptionRow(
-            label: 'Pain Signs',
-            options: const ['None', 'Mild', 'Moderate', 'Severe'],
-            selected: painSigns,
-            onChanged: onPainSigns,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // ── Hip Session Log ───────────────────────────────────────────────────────────
 class _HipLogCard extends StatelessWidget {
   const _HipLogCard({
@@ -832,7 +1376,6 @@ class _HipLogCard extends StatelessWidget {
 
 // ── Shared subwidgets ─────────────────────────────────────────────────────────
 
-/// 1–N score buttons row (used by Vest & Hip log cards).
 class _ScoreRow extends StatelessWidget {
   const _ScoreRow({
     required this.label,
@@ -936,7 +1479,6 @@ class _ScoreRow extends StatelessWidget {
   );
 }
 
-/// Option chips row (used by Vest & Hip log cards).
 class _OptionRow extends StatelessWidget {
   const _OptionRow({
     required this.label,
@@ -1006,7 +1548,6 @@ class _OptionRow extends StatelessWidget {
   }
 }
 
-// ── BLE status bar (reutilizable para Collar y Vest) ─────────────────────────
 class _BleStatusBar extends StatelessWidget {
   const _BleStatusBar({required this.dot, required this.label});
   final Color dot;
@@ -1545,10 +2086,10 @@ class _UploadButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return OutlinedButton.icon(
       onPressed: onPressed,
-      icon: const Icon(Icons.upload_file_outlined, color:Colors.white, size: 20),
-      label: Text(label, style: const TextStyle(color: Colors.white,  fontWeight: FontWeight.w600)),
+      icon: const Icon(Icons.upload_file_outlined, color: Colors.white, size: 20),
+      label: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
       style: OutlinedButton.styleFrom(
-        side: const BorderSide(color: Colors.white,  width: 1.2),
+        side: const BorderSide(color: Colors.white, width: 1.2),
         padding: const EdgeInsets.symmetric(vertical: 14),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),

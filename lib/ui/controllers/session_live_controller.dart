@@ -39,14 +39,9 @@ class SessionLiveController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    // Cuando cambia el preset Y haptic está ON → activar modo continuo (storm)
     ever(hapticPresetIndex, (int idx) {
-      if (hapticOn.value) {
-        _sendHapticContinuous(preset: idx);
-      }
+      if (hapticOn.value) _sendHapticContinuous(preset: idx);
     });
-    // Cuando se enciende el haptic → activar modo continuo con preset actual
-    // Cuando se apaga → mandar OFF al collar
     ever(hapticOn, (bool on) {
       if (on) {
         _sendHapticContinuous(preset: hapticPresetIndex.value);
@@ -56,10 +51,6 @@ class SessionLiveController extends GetxController {
     });
   }
 
-  /// Activa el modo haptic continuo en el collar (repite el preset cada ~8s).
-  /// Usa CMD_STORM internamente — el collar vibra de forma autónoma hasta
-  /// recibir CMD_OFF. Esto es el comportamiento esperado para sesiones
-  /// de calma activa y tormenta.
   void _sendHapticContinuous({required int preset}) {
     final ble = _ble;
     if (ble == null || !ble.isConnected) return;
@@ -68,28 +59,25 @@ class SessionLiveController extends GetxController {
 
   // ── Collar metrics ──────────────────────────────────────
   final movement = 5.0.obs;
-  final comfort = 5.0.obs;
-  final energy = 5.0.obs;
+  final comfort  = 5.0.obs;
+  final energy   = 5.0.obs;
 
-  // ── Vest metrics (1–5 buttons) ─────────────────────────
-  // stability: 1–5  (1=very unstable, 5=very stable)
-  final vestStability = 3.obs;
-  // vestWeightBearing: 0=Normal, 1=Shifting, 2=Avoiding
-  final vestWeightBearing = 0.obs;
-  // vestPainSigns: 0=None, 1=Mild, 2=Moderate, 3=Severe
-  final vestPainSigns = 0.obs;
+  // ── Vest metrics — auto-computed from BLE, NOT manual ──
+  // vestPainLevel:    0=none | 1=possible | 2=likely  → saved as 'vestPainSigns'
+  // vestAsymmetryPct: FSR asymmetry 0–100%            → saved as 'vestStability'
+  // vestLoadSide:     0=sym | 1=off-right | 2=off-left → saved as 'vestWeightBearing'
+  int _vestPainLevel    = 0;
+  int _vestAsymmetryPct = 0;
+  int _vestLoadSide     = 0;
 
   // ── Hip metrics ─────────────────────────────────────────
-  // mobility: 1–5  (1=very limited, 5=full mobility)
-  final hipMobility = 3.obs;
-  // painSigns: 0=None, 1=Mild, 2=Moderate, 3=Severe
-  final hipPainSigns = 0.obs;
-  // satStoodAlone: 0=unknown, 1=yes, 2=no
+  final hipMobility      = 3.obs;
+  final hipPainSigns     = 0.obs;
   final hipSatStoodAlone = 0.obs;
 
-  final limpLevel = 0.obs;
+  final limpLevel    = 0.obs;
   final responseLevel = 0.obs;
-  final calmingLevel = 3.obs;
+  final calmingLevel  = 3.obs;
 
   final noteController = TextEditingController();
   final photoUrl = ''.obs;
@@ -99,9 +87,7 @@ class SessionLiveController extends GetxController {
   final photoUploadProgress = 0.obs;
   final videoUploadProgress = 0.obs;
 
-  /// Matches live session UI chips: Calm / Moderate / Strong.
   static const List<String> hapticPresets = ['Calm', 'Moderate', 'Strong'];
-
   static const Duration _firestoreSyncInterval = Duration(seconds: 12);
   static const int _maxVideoUploadBytes = 50 * 1024 * 1024;
 
@@ -114,8 +100,6 @@ class SessionLiveController extends GetxController {
         '${s.toString().padLeft(2, '0')}';
   }
 
-  /// Live Firestore stream for the active session document.
-  /// Use with [StreamBuilder] to reflect any server-side changes instantly.
   Stream<SessionModel?> get sessionStream {
     final id = activeSession.value?.sessionId;
     if (id == null || id.isEmpty) return const Stream.empty();
@@ -132,15 +116,13 @@ class SessionLiveController extends GetxController {
     super.onClose();
   }
 
-  // ── BLE helper ──────────────────────────────────────────
+  // ── BLE helpers ─────────────────────────────────────────
   BleController? get _ble =>
       Get.isRegistered<BleController>() ? Get.find<BleController>() : null;
 
   VestBleController? get _vestBle =>
       Get.isRegistered<VestBleController>() ? Get.find<VestBleController>() : null;
 
-  /// Envía comando haptico al collar si está conectado.
-  /// preset: 0=Calm, 1=Moderate, 2=Strong
   void sendHapticCommand({required int preset, bool storm = false}) {
     final ble = _ble;
     if (ble == null || !ble.isConnected) return;
@@ -157,11 +139,61 @@ class SessionLiveController extends GetxController {
     unawaited(ble.sendOff());
   }
 
+  // ── Vest auto-assessment from BLE ───────────────────────
+
+  /// Computes vest pain values from the last BLE snapshot.
+  /// Called before every Firestore sync so the data stays fresh.
+  void _refreshVestAutoValues() {
+    final vs = _vestBle?.vestStatus.value;
+    if (vs == null) return;
+
+    // ── Asymmetry ─────────────────────────────────────────
+    final total = vs.fsrLeft + vs.fsrRight;
+    final fsrAvail = total > 200;
+    final asym = vs.scapularAsymmetry;
+
+    int asymScore = 0;
+    if (fsrAvail) {
+      if (asym >= 0.25) asymScore = 2;
+      else if (asym >= 0.10) asymScore = 1;
+    }
+    _vestAsymmetryPct = fsrAvail ? (asym * 100).round().clamp(0, 100) : 0;
+    _vestLoadSide = (!fsrAvail || asym < 0.10)
+        ? 0
+        : (vs.fsrLeft > vs.fsrRight ? 1 : 2); // 1=off-right, 2=off-left
+
+    // ── Temperature ───────────────────────────────────────
+    int tempScore = 0;
+    if (vs.tempBody > -900) {
+      if (vs.tempBody >= 39.5) tempScore = 2;
+      else if (vs.tempBody >= 39.0) tempScore = 1;
+    }
+
+    // ── Heart rate ────────────────────────────────────────
+    int hrScore = 0;
+    if (vs.hrValid) {
+      if (vs.heartRate > 120) hrScore = 2;
+      else if (vs.heartRate > 100) hrScore = 1;
+    }
+
+    // ── Pain level ────────────────────────────────────────
+    final totalScore = asymScore + tempScore + hrScore;
+    if (totalScore >= 3 || asymScore >= 2) {
+      _vestPainLevel = 2; // likely
+    } else if (totalScore > 0) {
+      _vestPainLevel = 1; // possible
+    } else {
+      _vestPainLevel = 0; // none
+    }
+  }
+
+  // ── Firestore sync ───────────────────────────────────────
+
   String _moduleTypeFromTitle(String title) {
     final t = title.toLowerCase();
     if (t.contains('collar')) return 'collar';
-    if (t.contains('vest')) return 'vest';
-    if (t.contains('hip')) return 'hip';
+    if (t.contains('vest'))   return 'vest';
+    if (t.contains('hip'))    return 'hip';
     return 'other';
   }
 
@@ -178,15 +210,10 @@ class SessionLiveController extends GetxController {
     return doc?.name ?? '';
   }
 
-  /// Subscribes to live Firestore updates for the active session document.
-  /// This means if the session is updated from another device or by an admin,
-  /// the changes reflect instantly in the UI without waiting for the sync timer.
   void _startSessionWatch(String sessionId) {
     _sessionSub?.cancel();
     _sessionSub = _sessionRepo.watchSession(sessionId).listen(
-      (session) {
-        if (session != null) activeSession.value = session;
-      },
+      (session) { if (session != null) activeSession.value = session; },
       onError: (Object e) =>
           debugPrint('[SessionLive] Firestore session watch: $e'),
     );
@@ -212,36 +239,39 @@ class SessionLiveController extends GetxController {
   Future<void> _pushActiveProgressToFirestore() async {
     final s = activeSession.value;
     if (s == null || s.status != 'active') return;
+
+    // Refresh vest auto-values before sync
+    if (s.moduleType == 'vest') _refreshVestAutoValues();
+
     try {
       final presetIdx = hapticPresetIndex.value.clamp(0, hapticPresets.length - 1);
       await _sessionRepo.syncActiveSessionProgress(
-        sessionId: s.sessionId,
-        durationSeconds: elapsedSeconds.value,
-        movement: movement.value,
-        comfort: comfort.value,
-        energy: energy.value,
-        vestStability: vestStability.value,
-        vestWeightBearing: vestWeightBearing.value,
-        vestPainSigns: vestPainSigns.value,
-        hipMobility: hipMobility.value,
-        hipPainSigns: hipPainSigns.value,
+        sessionId:        s.sessionId,
+        durationSeconds:  elapsedSeconds.value,
+        movement:         movement.value,
+        comfort:          comfort.value,
+        energy:           energy.value,
+        vestStability:    _vestAsymmetryPct,   // FSR asymmetry %
+        vestWeightBearing: _vestLoadSide,       // 0=sym, 1=off-right, 2=off-left
+        vestPainSigns:    _vestPainLevel,       // 0=none, 1=possible, 2=likely
+        hipMobility:      hipMobility.value,
+        hipPainSigns:     hipPainSigns.value,
         hipSatStoodAlone: hipSatStoodAlone.value,
-        limpLevel: limpLevel.value,
-        responseLevel: responseLevel.value,
-        calmingLevel: calmingLevel.value,
-        hapticPreset: hapticPresets[presetIdx],
-        intensity: intensity.value,
-        hapticOn: hapticOn.value,
-        notes: noteController.text.trim(),
-        photoUrl: photoUrl.value,
-        videoUrl: videoUrl.value,
+        limpLevel:        limpLevel.value,
+        responseLevel:    responseLevel.value,
+        calmingLevel:     calmingLevel.value,
+        hapticPreset:     hapticPresets[presetIdx],
+        intensity:        intensity.value,
+        hapticOn:         hapticOn.value,
+        notes:            noteController.text.trim(),
+        photoUrl:         photoUrl.value,
+        videoUrl:         videoUrl.value,
       );
     } catch (e) {
       debugPrint('[SessionLive] Firestore sync: $e');
     }
   }
 
-  /// Call once when [SessionLiveView] opens (uses route [Get.arguments]).
   Future<void> bootstrapFromRoute(dynamic rawArgs) async {
     if (_bootstrapped) return;
     _bootstrapped = true;
@@ -269,9 +299,7 @@ class SessionLiveController extends GetxController {
       deviceLabel: deviceLabel,
       moduleType: _moduleTypeFromTitle(deviceLabel),
     );
-    if (activeSession.value == null) {
-      _bootstrapped = false;
-    }
+    if (activeSession.value == null) _bootstrapped = false;
   }
 
   Future<void> abandonSession() async {
@@ -327,14 +355,8 @@ class SessionLiveController extends GetxController {
       _startFirestoreSyncTimer();
       _startSessionWatch(activeSession.value!.sessionId);
       unawaited(_pushActiveProgressToFirestore());
-      // BLE: conectar al collar automaticamente si es modulo collar
-      if (moduleType == 'collar') {
-        unawaited(_ble?.startSession());
-      }
-      // BLE: conectar al vest automaticamente si es modulo vest
-      if (moduleType == 'vest') {
-        unawaited(_vestBle?.startSession());
-      }
+      if (moduleType == 'collar') unawaited(_ble?.startSession());
+      if (moduleType == 'vest')   unawaited(_vestBle?.startSession());
     } catch (e) {
       debugPrint('[SessionLive] start error: $e');
       _snack('Error', 'Could not start session. Check your connection.');
@@ -363,10 +385,7 @@ class SessionLiveController extends GetxController {
     }
     if (isUploadingPhoto.value) return;
     final picker = ImagePicker();
-    final x = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 85,
-    );
+    final x = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
     if (x == null) return;
     photoUploadProgress.value = 1;
     photoUrl.value = '';
@@ -378,9 +397,7 @@ class SessionLiveController extends GetxController {
         sessionId: session.sessionId,
         imageBytes: imageBytes,
         filePath: x.path,
-        onProgress: (progress) {
-          photoUploadProgress.value = progress.clamp(1, 100);
-        },
+        onProgress: (p) { photoUploadProgress.value = p.clamp(1, 100); },
       );
       photoUrl.value = url;
       photoUploadProgress.value = 100;
@@ -388,10 +405,8 @@ class SessionLiveController extends GetxController {
     } on FirebaseException catch (e) {
       debugPrint('[SessionLive] photo upload: $e');
       if (e.code == 'unauthorized') {
-        _snack(
-          'Storage permission denied',
-          'Deploy updated Firebase Storage rules, then retry image upload.',
-        );
+        _snack('Storage permission denied',
+            'Deploy updated Firebase Storage rules, then retry image upload.');
       } else {
         _snack('Upload failed', 'Could not upload photo. Check connection and try again.');
       }
@@ -421,10 +436,8 @@ class SessionLiveController extends GetxController {
     final sizeBytes = await pickedFile.length();
     if (sizeBytes > _maxVideoUploadBytes) {
       final mb = (sizeBytes / (1024 * 1024)).toStringAsFixed(1);
-      _snack(
-        'Video too large',
-        'Selected video is ${mb}MB. Please keep it under 50MB (720p/medium quality).',
-      );
+      _snack('Video too large',
+          'Selected video is ${mb}MB. Please keep it under 50MB (720p/medium quality).');
       return;
     }
     videoUploadProgress.value = 1;
@@ -435,9 +448,7 @@ class SessionLiveController extends GetxController {
         userId: uid,
         sessionId: session.sessionId,
         filePath: x.path,
-        onProgress: (progress) {
-          videoUploadProgress.value = progress.clamp(1, 100);
-        },
+        onProgress: (p) { videoUploadProgress.value = p.clamp(1, 100); },
       );
       videoUrl.value = url;
       videoUploadProgress.value = 100;
@@ -445,10 +456,8 @@ class SessionLiveController extends GetxController {
     } on FirebaseException catch (e) {
       debugPrint('[SessionLive] video upload: $e');
       if (e.code == 'unauthorized') {
-        _snack(
-          'Storage permission denied',
-          'Deploy updated Firebase Storage rules, then retry video upload.',
-        );
+        _snack('Storage permission denied',
+            'Deploy updated Firebase Storage rules, then retry video upload.');
       } else {
         _snack('Upload failed', 'Could not upload video. Check connection and try again.');
       }
@@ -472,30 +481,33 @@ class SessionLiveController extends GetxController {
       return;
     }
 
+    // Final vest snapshot before saving
+    if (session.moduleType == 'vest') _refreshVestAutoValues();
+
     isLoading.value = true;
     try {
       final presetIdx = hapticPresetIndex.value.clamp(0, hapticPresets.length - 1);
       final completed = await _sessionRepo.endSession(
-        sessionId: session.sessionId,
-        durationSeconds: elapsedSeconds.value,
-        movement: movement.value,
-        comfort: comfort.value,
-        energy: energy.value,
-        vestStability: vestStability.value,
-        vestWeightBearing: vestWeightBearing.value,
-        vestPainSigns: vestPainSigns.value,
-        hipMobility: hipMobility.value,
-        hipPainSigns: hipPainSigns.value,
-        hipSatStoodAlone: hipSatStoodAlone.value,
-        limpLevel: limpLevel.value,
-        responseLevel: responseLevel.value,
-        calmingLevel: calmingLevel.value,
-        hapticPreset: hapticPresets[presetIdx],
-        intensity: intensity.value,
-        hapticOn: hapticOn.value,
-        notes: noteController.text.trim(),
-        photoUrl: photoUrl.value,
-        videoUrl: videoUrl.value,
+        sessionId:         session.sessionId,
+        durationSeconds:   elapsedSeconds.value,
+        movement:          movement.value,
+        comfort:           comfort.value,
+        energy:            energy.value,
+        vestStability:     _vestAsymmetryPct,   // FSR asymmetry %
+        vestWeightBearing: _vestLoadSide,        // 0=sym, 1=off-right, 2=off-left
+        vestPainSigns:     _vestPainLevel,       // 0=none, 1=possible, 2=likely
+        hipMobility:       hipMobility.value,
+        hipPainSigns:      hipPainSigns.value,
+        hipSatStoodAlone:  hipSatStoodAlone.value,
+        limpLevel:         limpLevel.value,
+        responseLevel:     responseLevel.value,
+        calmingLevel:      calmingLevel.value,
+        hapticPreset:      hapticPresets[presetIdx],
+        intensity:         intensity.value,
+        hapticOn:          hapticOn.value,
+        notes:             noteController.text.trim(),
+        photoUrl:          photoUrl.value,
+        videoUrl:          videoUrl.value,
       );
       activeSession.value = completed;
       Get.offNamed(AppRoutes.sessionSummary, arguments: {'session': completed});
@@ -509,8 +521,7 @@ class SessionLiveController extends GetxController {
 
   void _snack(String title, String message) {
     Get.snackbar(
-      title,
-      message,
+      title, message,
       snackPosition: SnackPosition.BOTTOM,
       margin: const EdgeInsets.all(16),
       backgroundColor: const Color(0xFF2A2A2A),

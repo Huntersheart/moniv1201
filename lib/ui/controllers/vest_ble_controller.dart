@@ -21,12 +21,26 @@ class VestBleController extends GetxController {
   final vestStatus = Rxn<VestStatus>();
 
   // ── Datos de sensores accesibles directamente en la UI ────
-  int    get heartRate   => vestStatus.value?.heartRate   ?? -1;
-  int    get spo2        => vestStatus.value?.spo2        ?? -1;
-  double get tempBody    => vestStatus.value?.tempBody    ?? -999;
-  double get tempAmbient => vestStatus.value?.tempAmbient ?? -999;
-  double get humidity    => vestStatus.value?.humidity    ?? -999;
-  bool   get hasContact  => vestStatus.value?.hasContact  ?? false;
+  int    get heartRate      => vestStatus.value?.heartRate      ?? -1;
+  int    get spo2           => vestStatus.value?.spo2           ?? -1;
+  bool   get hrValid        => vestStatus.value?.hrValid        ?? false;
+  bool   get spo2Valid      => vestStatus.value?.spo2Valid      ?? false;
+  double get tempBody       => vestStatus.value?.tempBody       ?? -999;
+  double get tempAmbient    => vestStatus.value?.tempAmbient    ?? -999;
+  double get humidity       => vestStatus.value?.humidity       ?? -999;
+  bool   get hasContact     => vestStatus.value?.hasContact     ?? false;
+  // LSM6DSOX
+  double get ax             => vestStatus.value?.ax             ?? 0;
+  double get ay             => vestStatus.value?.ay             ?? 0;
+  double get az             => vestStatus.value?.az             ?? 0;
+  double get gx             => vestStatus.value?.gx             ?? 0;
+  double get gy             => vestStatus.value?.gy             ?? 0;
+  double get gz             => vestStatus.value?.gz             ?? 0;
+  // FSR 406 — escápulas
+  int    get fsrLeft        => vestStatus.value?.fsrLeft        ?? 0;
+  int    get fsrRight       => vestStatus.value?.fsrRight       ?? 0;
+  double get scapularAsymmetry =>
+      vestStatus.value?.scapularAsymmetry ?? 0;
 
   StreamSubscription<VestBleStatus>? _statusSub;
   StreamSubscription<VestStatus>?    _vestSub;
