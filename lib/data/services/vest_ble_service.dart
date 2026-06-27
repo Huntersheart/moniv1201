@@ -135,7 +135,9 @@ class VestBleService {
     _scanSub = FlutterBluePlus.scanResults.listen(
       (results) async {
         final match = results
-            .where((r) => r.device.platformName == _kDeviceName)
+            .where((r) =>
+                r.device.platformName == _kDeviceName ||
+                r.advertisementData.advName == _kDeviceName)
             .firstOrNull;
         if (match == null) return;
         debugPrint('[VestBLE] Vest encontrado: ${match.device.remoteId}');
