@@ -468,7 +468,39 @@ class _VestPainSummaryCard extends StatelessWidget {
           const SizedBox(height: 14),
 
           // ── Signal rows ───────────────────────────────────
-          if (hasShoulderData)
+          if (s.vestHeartRate > 0) ...[
+            _SummaryRow(
+              label: 'Heart rate',
+              value: s.vestHeartRate > 120
+                  ? 'High — ${s.vestHeartRate} BPM'
+                  : s.vestHeartRate > 100
+                      ? 'Elevated — ${s.vestHeartRate} BPM'
+                      : '${s.vestHeartRate} BPM',
+              valueColor: s.vestHeartRate > 120
+                  ? const Color(0xFFFF4C6A)
+                  : s.vestHeartRate > 100
+                      ? const Color(0xFFFFB347)
+                      : const Color(0xFF16D351),
+            ),
+            const SizedBox(height: 6),
+          ],
+          if (s.vestTempBody > -900) ...[
+            _SummaryRow(
+              label: 'Temperature',
+              value: s.vestTempBody >= 39.5
+                  ? 'High — ${s.vestTempBody.toStringAsFixed(1)}°C'
+                  : s.vestTempBody >= 39.0
+                      ? 'Elevated — ${s.vestTempBody.toStringAsFixed(1)}°C'
+                      : 'Normal — ${s.vestTempBody.toStringAsFixed(1)}°C',
+              valueColor: s.vestTempBody >= 39.5
+                  ? const Color(0xFFFF4C6A)
+                  : s.vestTempBody >= 39.0
+                      ? const Color(0xFFFFB347)
+                      : const Color(0xFF16D351),
+            ),
+            const SizedBox(height: 6),
+          ],
+          if (hasShoulderData) ...[
             _SummaryRow(
               label: 'Shoulder load',
               value: s.vestShoulderLoadDisplay,
@@ -478,6 +510,8 @@ class _VestPainSummaryCard extends StatelessWidget {
                       ? const Color(0xFFFF4C6A)
                       : const Color(0xFFFFB347),
             ),
+            const SizedBox(height: 6),
+          ],
 
           // ── Shoulder balance bars ─────────────────────────
           if (hasShoulderData) ...[

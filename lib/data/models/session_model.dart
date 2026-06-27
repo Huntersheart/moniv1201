@@ -37,6 +37,8 @@ class SessionModel {
   final int vestPainLevel;    // 0 | 1 | 2
   final int vestAsymmetryPct; // 0–100
   final int vestLoadSide;     // 0=sym, 1=right, 2=left
+  final int vestHeartRate;    // BPM (-1 = no contact)
+  final double vestTempBody;  // °C (-999 = no reading)
 
   const SessionModel({
     required this.sessionId,
@@ -67,6 +69,8 @@ class SessionModel {
     this.vestPainLevel = 0,
     this.vestAsymmetryPct = 0,
     this.vestLoadSide = 0,
+    this.vestHeartRate = -1,
+    this.vestTempBody = -999,
   });
 
   // ── Display helpers ───────────────────────────────────────────────────────
@@ -224,6 +228,8 @@ class SessionModel {
       vestPainLevel:    map['vestPainSigns']     as int? ?? 0,
       vestAsymmetryPct: map['vestStability']     as int? ?? 0,
       vestLoadSide:     map['vestWeightBearing'] as int? ?? 0,
+      vestHeartRate:    map['vestHR']            as int? ?? -1,
+      vestTempBody:     (map['vestTemp']         as num?)?.toDouble() ?? -999,
     );
   }
 
@@ -258,6 +264,8 @@ class SessionModel {
       'vestPainSigns':     vestPainLevel,
       'vestStability':     vestAsymmetryPct,
       'vestWeightBearing': vestLoadSide,
+      'vestHR':            vestHeartRate,
+      'vestTemp':          vestTempBody,
     };
   }
 
@@ -270,6 +278,7 @@ class SessionModel {
     String? hapticPreset, double? intensity, bool? hapticOn,
     String? notes, String? photoUrl, String? videoUrl, DateTime? createdAt,
     int? vestPainLevel, int? vestAsymmetryPct, int? vestLoadSide,
+    int? vestHeartRate, double? vestTempBody,
   }) {
     return SessionModel(
       sessionId:       sessionId       ?? this.sessionId,
@@ -300,6 +309,8 @@ class SessionModel {
       vestPainLevel:    vestPainLevel    ?? this.vestPainLevel,
       vestAsymmetryPct: vestAsymmetryPct ?? this.vestAsymmetryPct,
       vestLoadSide:     vestLoadSide     ?? this.vestLoadSide,
+      vestHeartRate:    vestHeartRate    ?? this.vestHeartRate,
+      vestTempBody:     vestTempBody     ?? this.vestTempBody,
     );
   }
 }

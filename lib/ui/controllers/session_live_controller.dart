@@ -66,9 +66,11 @@ class SessionLiveController extends GetxController {
   // vestPainLevel:    0=none | 1=possible | 2=likely  → saved as 'vestPainSigns'
   // vestAsymmetryPct: FSR asymmetry 0–100%            → saved as 'vestStability'
   // vestLoadSide:     0=sym | 1=off-right | 2=off-left → saved as 'vestWeightBearing'
-  int _vestPainLevel    = 0;
-  int _vestAsymmetryPct = 0;
-  int _vestLoadSide     = 0;
+  int    _vestPainLevel    = 0;
+  int    _vestAsymmetryPct = 0;
+  int    _vestLoadSide     = 0;
+  int    _vestHeartRate    = -1;
+  double _vestTempBody     = -999;
 
   // ── Hip metrics ─────────────────────────────────────────
   final hipMobility      = 3.obs;
@@ -185,6 +187,10 @@ class SessionLiveController extends GetxController {
     } else {
       _vestPainLevel = 0; // none
     }
+
+    // ── Snapshot values for summary ───────────────────────
+    _vestHeartRate = vs.hrValid ? vs.heartRate : -1;
+    _vestTempBody  = vs.tempBody;
   }
 
   // ── Firestore sync ───────────────────────────────────────
@@ -251,9 +257,11 @@ class SessionLiveController extends GetxController {
         movement:         movement.value,
         comfort:          comfort.value,
         energy:           energy.value,
-        vestStability:    _vestAsymmetryPct,   // FSR asymmetry %
-        vestWeightBearing: _vestLoadSide,       // 0=sym, 1=off-right, 2=off-left
-        vestPainSigns:    _vestPainLevel,       // 0=none, 1=possible, 2=likely
+        vestStability:    _vestAsymmetryPct,
+        vestWeightBearing: _vestLoadSide,
+        vestPainSigns:    _vestPainLevel,
+        vestHR:           _vestHeartRate,
+        vestTemp:         _vestTempBody,
         hipMobility:      hipMobility.value,
         hipPainSigns:     hipPainSigns.value,
         hipSatStoodAlone: hipSatStoodAlone.value,
@@ -493,9 +501,11 @@ class SessionLiveController extends GetxController {
         movement:          movement.value,
         comfort:           comfort.value,
         energy:            energy.value,
-        vestStability:     _vestAsymmetryPct,   // FSR asymmetry %
-        vestWeightBearing: _vestLoadSide,        // 0=sym, 1=off-right, 2=off-left
-        vestPainSigns:     _vestPainLevel,       // 0=none, 1=possible, 2=likely
+        vestStability:     _vestAsymmetryPct,
+        vestWeightBearing: _vestLoadSide,
+        vestPainSigns:     _vestPainLevel,
+        vestHR:            _vestHeartRate,
+        vestTemp:          _vestTempBody,
         hipMobility:       hipMobility.value,
         hipPainSigns:      hipPainSigns.value,
         hipSatStoodAlone:  hipSatStoodAlone.value,
