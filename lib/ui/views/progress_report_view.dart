@@ -287,7 +287,7 @@ class ProgressReportView extends GetView<ProgressReportController> {
       final rawMin = values.reduce((a, b) => a < b ? a : b);
       final rawMax = values.reduce((a, b) => a > b ? a : b);
       final padding = (rawMax - rawMin) * 0.2 + 0.5;
-      final minY = (rawMin - padding).clamp(0, double.infinity);
+      final minY = (rawMin - padding).clamp(0.0, double.infinity).toDouble();
       final maxY = rawMax + padding;
 
       return Container(
