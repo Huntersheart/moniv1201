@@ -36,9 +36,13 @@ class DogModel {
   });
 
   String get ageDisplay {
-    if (ageMonths < 12) return '$ageMonths months';
+    if (ageMonths <= 0) return '—';
+    if (ageMonths < 12) return '$ageMonths ${ageMonths == 1 ? 'month' : 'months'}';
     final years = ageMonths ~/ 12;
-    return '$years ${years == 1 ? 'year' : 'years'}';
+    final months = ageMonths % 12;
+    final yearStr = '$years ${years == 1 ? 'year' : 'years'}';
+    if (months == 0) return yearStr;
+    return '$yearStr $months ${months == 1 ? 'month' : 'months'}';
   }
 
   String get weightDisplay => '${weightLbs.toStringAsFixed(1)} lbs';

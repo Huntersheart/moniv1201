@@ -190,10 +190,13 @@ class _SummaryContent extends StatelessWidget {
               else
                 _labelValue(label: 'Intensity', value: '${s.intensityScore10}/10', valueColor: _valueGreen),
               const SizedBox(height: 16),
-              Row(children: [
-                Expanded(child: _labelValue(label: 'Session Type', value: s.sessionTypeDisplay, valueColor: _valueGreen)),
-                Expanded(child: _labelValue(label: 'Haptic on',    value: s.hapticOn ? 'Yes' : 'No', valueColor: Colors.white70)),
-              ]),
+              if (hideHaptic)
+                _labelValue(label: 'Session Type', value: s.sessionTypeDisplay, valueColor: _valueGreen)
+              else
+                Row(children: [
+                  Expanded(child: _labelValue(label: 'Session Type', value: s.sessionTypeDisplay, valueColor: _valueGreen)),
+                  Expanded(child: _labelValue(label: 'Haptic on',    value: s.hapticOn ? 'Yes' : 'No', valueColor: Colors.white70)),
+                ]),
               if (!hideHaptic) ...[
                 const SizedBox(height: 16),
                 _labelValue(

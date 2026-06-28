@@ -1484,6 +1484,32 @@ class _DogDetailDialogContent extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 20),
+                // ── Progress Report button ─────────────────────
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Get.toNamed<void>(
+                      AppRoutes.progressReport,
+                      arguments: {
+                        'dogId':   d.dogId,
+                        'dogName': d.name,
+                      },
+                    );
+                  },
+                  icon: const Icon(Icons.show_chart_rounded,
+                      color: AppColors.signaraGold),
+                  label: const Text(
+                    'View Progress Report',
+                    style: TextStyle(color: AppColors.signaraGold),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 50),
+                    side: const BorderSide(color: AppColors.signaraGold),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+                const SizedBox(height: 12),
                 SignaraPrimaryButton(
                   label: 'Start Session',
                   onPressed: () async {

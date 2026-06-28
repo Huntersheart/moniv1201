@@ -28,12 +28,13 @@ class AddDogController extends GetxController {
   // El usuario ingresa un numero + selecciona Years o Months
   // Internamente siempre guardamos ageMonths en Firestore
   final ageNumberController = TextEditingController(text: '0');
+  // Note: accepts decimals (e.g. 8.5 years = 102 months)
   final ageUnit = 'Years'.obs; // 'Years' | 'Months'
   static const List<String> ageUnits = ['Years', 'Months'];
 
   int get _ageInMonths {
-    final n = int.tryParse(ageNumberController.text) ?? 0;
-    return ageUnit.value == 'Years' ? n * 12 : n;
+    final n = double.tryParse(ageNumberController.text) ?? 0;
+    return ageUnit.value == 'Years' ? (n * 12).round() : n.round();
   }
 
   // ── Raza ─────────────────────────────────────────────────────

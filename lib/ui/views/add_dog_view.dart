@@ -147,7 +147,7 @@ class AddDogView extends GetView<AddDogController> {
                                   labelTextAlign: TextAlign.start,
                                   controller: controller.ageNumberController,
                                   hintText: '0',
-                                  keyboardType: TextInputType.number,
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                   textInputAction: TextInputAction.next,
                                 ),
                               ),
