@@ -7,6 +7,7 @@ import '../bindings/add_dog_binding.dart';
 import '../bindings/select_module_binding.dart';
 import '../bindings/session_live_binding.dart';
 import '../bindings/session_summary_binding.dart';
+import '../bindings/progress_report_binding.dart';
 import '../bindings/auth_binding.dart';
 import '../bindings/dashboard_binding.dart';
 import '../bindings/onboarding_binding.dart';
@@ -23,6 +24,7 @@ import '../../ui/views/dashboard_view.dart';
 import '../../ui/views/onboarding_view.dart';
 import '../../ui/views/splash_view.dart';
 import '../../ui/views/admin/admin_dashboard_view.dart';
+import '../../ui/views/progress_report_view.dart';
 import 'app_routes.dart';
 
 abstract final class AppPages {
@@ -85,6 +87,12 @@ abstract final class AppPages {
       name: AppRoutes.sessionSummary,
       page: SessionSummaryView.new,
       binding: SessionSummaryBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: AppRoutes.progressReport,
+      page: ProgressReportView.new,
+      binding: ProgressReportBinding(),
       middlewares: [AuthMiddleware()],
     ),
     GetPage(

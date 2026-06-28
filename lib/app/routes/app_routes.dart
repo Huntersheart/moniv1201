@@ -11,4 +11,5 @@ abstract final class AppRoutes {
   static const String sessionLive = '/session-live';
   static const String sessionSummary = '/session-summary';
   static const String adminDashboard = '/admin';
+  static const String progressReport = '/progress-report';
 }
