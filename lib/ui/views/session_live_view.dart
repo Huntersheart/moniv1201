@@ -76,7 +76,7 @@ class _PainAssessment {
     }
   }
 
-  static _PainAssessment from(VestStatus s) {
+  static _PainAssessment from(VestStatus s, {String dogName = 'Dog'}) {
     // ── Asymmetry ───────────────────────────────────────────
     final asym = s.scapularAsymmetry;
     final total = s.fsrLeft + s.fsrRight;
@@ -154,24 +154,24 @@ class _PainAssessment {
 
     if (totalScore == 0) {
       level = PainLevel.none;
-      headline = 'Hunter feels good';
+      headline = '$dogName feels good';
       detail = 'Symmetric shoulder load · Vitals normal';
     } else if (asymScore >= 2 || totalScore >= 3) {
       level = PainLevel.likely;
       if (asymScore >= 2) {
         final side = rightOffloading ? 'right' : 'left';
         headline = 'Strong $side shoulder avoidance';
-        detail = 'Heavy load shift — consider resting Hunter';
+        detail = 'Heavy load shift — consider resting $dogName';
       } else {
         headline = 'Multiple pain indicators';
-        detail = 'Elevated vitals + movement changes — consider resting Hunter';
+        detail = 'Elevated vitals + movement changes — consider resting $dogName';
       }
     } else {
       level = PainLevel.possible;
       if (asymScore >= 1) {
         final side = rightOffloading ? 'right' : 'left';
         headline = 'Compensating $side shoulder';
-        detail = 'Hunter is shifting weight off the $side side — could indicate discomfort';
+        detail = '$dogName is shifting weight off the $side side — could indicate discomfort';
       } else {
         headline = 'Some discomfort signs';
         detail = 'Mild elevated vitals — keep monitoring';
@@ -451,7 +451,7 @@ class _SessionLiveViewState extends State<SessionLiveView> {
                                   if (!ble.isConnected || vs == null) {
                                     return const SizedBox.shrink();
                                   }
-                                  final pa = _PainAssessment.from(vs);
+                                  final pa = _PainAssessment.from(vs, dogName: dog?.name ?? 'Dog');
                                   return Column(
                                     crossAxisAlignment: CrossAxisAlignment.stretch,
                                     children: [
