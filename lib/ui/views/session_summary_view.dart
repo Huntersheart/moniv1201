@@ -7,6 +7,7 @@ import 'package:video_player/video_player.dart';
 import '../../app/routes/app_routes.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/session_model.dart';
+import '../../data/services/session_csv_service.dart';
 import '../controllers/session_summary_controller.dart';
 import '../widgets/signara_dashboard_background.dart';
 
@@ -74,6 +75,42 @@ class SessionSummaryView extends GetView<SessionSummaryController> {
                       child: SingleChildScrollView(
                         padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
                         child: _SummaryContent(session: s),
+                      ),
+                    ),
+                    // ── Export buttons ────────────────────────
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () async {
+                                try {
+                                  await SessionCsvService.exportAndShare(
+                                    sessions: [s],
+                                    dogName: s.dogName.isNotEmpty ? s.dogName : 'Dog',
+                                  );
+                                } catch (e) {
+                                  Get.snackbar(
+                                    'Export',
+                                    'Could not export CSV: $e',
+                                    snackPosition: SnackPosition.BOTTOM,
+                                    backgroundColor: const Color(0xFF2A2A2A),
+                                    colorText: Colors.white,
+                                    margin: const EdgeInsets.all(16),
+                                  );
+                                }
+                              },
+                              icon: const Icon(Icons.download_outlined, size: 18, color: Colors.white),
+                              label: const Text('CSV', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(color: Colors.white.withValues(alpha: 0.4)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     Padding(
@@ -153,7 +190,8 @@ class _SummaryContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = session;
     final hideHaptic = s.isVestOrHipModule;
-    final isVest = s.moduleType.toLowerCase() == 'vest';
+    final isVest   = s.moduleType.toLowerCase() == 'vest';
+    final isCollar = s.moduleType.toLowerCase() == 'collar';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -220,8 +258,14 @@ class _SummaryContent extends StatelessWidget {
           const SizedBox(height: 16),
         ],
 
-        // ── Session Scores (non-vest or vest with scores) ──
-        if (!isVest)
+        // ── Collar Gait Summary (collar only) ──────────────
+        if (isCollar) ...[
+          _CollarGaitSummaryCard(session: s),
+          const SizedBox(height: 16),
+        ],
+
+        // ── Session Scores (non-vest, non-collar) ──────────
+        if (!isVest && !isCollar)
           _cardBox(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -244,7 +288,7 @@ class _SummaryContent extends StatelessWidget {
               ],
             ),
           ),
-        if (!isVest) const SizedBox(height: 16),
+        if (!isVest && !isCollar) const SizedBox(height: 16);
 
         // ── Notes ──────────────────────────────────────────
         _cardBox(
@@ -643,6 +687,154 @@ class _SummaryShoulderBar extends StatelessWidget {
           ),
         ] else
           const SizedBox(width: 70),
+      ],
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// COLLAR GAIT SUMMARY CARD — Sección 9: Ortopédico, Médico, Entorno
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _CollarGaitSummaryCard extends StatelessWidget {
+  const _CollarGaitSummaryCard({required this.session});
+  final SessionModel session;
+
+  static const Color _cardBg = Color(0xFF0D1B2A);
+
+  Color get _gaitAccent {
+    if (session.collarHeartRate > 120 ||
+        (session.collarSpo2 != -1 && session.collarSpo2 < 90)) {
+      return const Color(0xFFFF4C6A);
+    }
+    if (session.limpLevel == 1 ||
+        session.collarHeartRate > 100 ||
+        (session.collarSpo2 != -1 && session.collarSpo2 < 95)) {
+      return const Color(0xFFFFB347);
+    }
+    return const Color(0xFF16D351);
+  }
+
+  String get _gaitBadge {
+    final c = _gaitAccent;
+    if (c == const Color(0xFFFF4C6A)) return 'Alert';
+    if (c == const Color(0xFFFFB347)) return 'Watch';
+    return 'Good';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = session;
+    final accent = _gaitAccent;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // ── BLOQUE ORTOPÉDICO ─────────────────────────────
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: _cardBg,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: accent.withValues(alpha: 0.55), width: 1.5),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('ORTHOPEDIC', style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.8, decoration: TextDecoration.none)),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: accent.withValues(alpha: 0.5)),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Container(width: 7, height: 7, decoration: BoxDecoration(color: accent, shape: BoxShape.circle)),
+                      const SizedBox(width: 6),
+                      Text(_gaitBadge, style: TextStyle(color: accent, fontSize: 12, fontWeight: FontWeight.w700, decoration: TextDecoration.none)),
+                    ]),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              _SummaryRow(label: 'Limp observed',      value: s.limpLevel == 1 ? 'Limp Present' : 'No Limp',   valueColor: s.limpLevel == 1 ? const Color(0xFFFFB347) : const Color(0xFF16D351)),
+              _SummaryRow(label: 'Response to haptic', value: s.responseDisplayLabel,                           valueColor: s.responseLevel >= 1 ? const Color(0xFF16D351) : Colors.white54),
+              _SummaryRow(label: 'Calming effect',     value: '${s.calmingEffectDisplayLabel} (${s.calmingLevel}/5)', valueColor: AppColors.signaraGold),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // ── BLOQUE MÉDICO ─────────────────────────────────
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: _cardBg,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('MEDICAL', style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.8, decoration: TextDecoration.none)),
+              const SizedBox(height: 14),
+              if (s.collarHeartRate > 0)
+                _SummaryRow(
+                  label: 'Heart rate',
+                  value: s.collarHeartRate > 120 ? 'High — ${s.collarHeartRate} BPM' : s.collarHeartRate > 100 ? 'Elevated — ${s.collarHeartRate} BPM' : '${s.collarHeartRate} BPM',
+                  valueColor: s.collarHeartRate > 120 ? const Color(0xFFFF4C6A) : s.collarHeartRate > 100 ? const Color(0xFFFFB347) : const Color(0xFF16D351),
+                )
+              else
+                _SummaryRow(label: 'Heart rate', value: '— (no contact)', valueColor: Colors.white38),
+              if (s.collarSpo2 > 0)
+                _SummaryRow(
+                  label: 'SpO₂',
+                  value: s.collarSpo2 < 90 ? 'Very low — ${s.collarSpo2}%' : s.collarSpo2 < 95 ? 'Low — ${s.collarSpo2}%' : '${s.collarSpo2}%  Normal',
+                  valueColor: s.collarSpo2 < 90 ? const Color(0xFFFF4C6A) : s.collarSpo2 < 95 ? const Color(0xFFFFB347) : const Color(0xFF16D351),
+                )
+              else
+                _SummaryRow(label: 'SpO₂', value: '— (no contact)', valueColor: Colors.white38),
+              if (s.collarTempBody > 0)
+                _SummaryRow(
+                  label: 'Body temperature',
+                  value: s.collarTempBody >= 39.5 ? 'High — ${s.collarTempBody.toStringAsFixed(1)} °C' : s.collarTempBody >= 39.0 ? 'Elevated — ${s.collarTempBody.toStringAsFixed(1)} °C' : 'Normal — ${s.collarTempBody.toStringAsFixed(1)} °C',
+                  valueColor: s.collarTempBody >= 39.5 ? const Color(0xFFFF4C6A) : s.collarTempBody >= 39.0 ? const Color(0xFFFFB347) : const Color(0xFF16D351),
+                )
+              else
+                _SummaryRow(label: 'Body temperature', value: '—', valueColor: Colors.white38),
+              _SummaryRow(
+                label: 'Vocalizations (LDT)',
+                value: s.collarLdt > 0 ? '${s.collarLdt} detected' : 'None detected',
+                valueColor: s.collarLdt > 0 ? const Color(0xFFFFB347) : Colors.white54,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // ── BLOQUE ENTORNO Y ESTÍMULOS ────────────────────
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: _cardBg,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('ENVIRONMENT & STIMULI', style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.8, decoration: TextDecoration.none)),
+              const SizedBox(height: 14),
+              _SummaryRow(label: 'Storm Shield',         value: '— (live only)',                                       valueColor: Colors.white38),
+              _SummaryRow(label: 'GPS fix during session', value: s.collarGpsFix ? 'Active' : 'Not active (V1)',       valueColor: s.collarGpsFix ? const Color(0xFF16D351) : Colors.white38),
+              _SummaryRow(label: 'Haptic preset',          value: s.hapticOn ? '${s.hapticPreset}  ·  Intensity ${s.intensityScore10}/10' : 'Off', valueColor: s.hapticOn ? AppColors.signaraGold : Colors.white38),
+            ],
+          ),
+        ),
       ],
     );
   }

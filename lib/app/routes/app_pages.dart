@@ -25,6 +25,7 @@ import '../../ui/views/onboarding_view.dart';
 import '../../ui/views/splash_view.dart';
 import '../../ui/views/admin/admin_dashboard_view.dart';
 import '../../ui/views/progress_report_view.dart';
+import '../../ui/views/nfc_identity_view.dart';
 import 'app_routes.dart';
 
 abstract final class AppPages {
@@ -100,6 +101,11 @@ abstract final class AppPages {
       page: AdminDashboardView.new,
       binding: AdminBinding(),
       middlewares: [AuthMiddleware(), RoleMiddleware()],
+    ),
+    GetPage(
+      name: AppRoutes.nfcIdentity,
+      page: NfcIdentityView.new,
+      middlewares: [AuthMiddleware()],
     ),
   ];
 }

@@ -1510,6 +1510,31 @@ class _DogDetailDialogContent extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
+                // ── Security & Digital Identity (NFC) ────────
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Get.toNamed<void>(
+                      AppRoutes.nfcIdentity,
+                      arguments: {
+                        'dogId':   d.dogId,
+                        'dogName': d.name,
+                      },
+                    );
+                  },
+                  icon: const Icon(Icons.nfc_rounded, color: Colors.white70),
+                  label: const Text(
+                    'Security & Digital Identity',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 50),
+                    side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+                const SizedBox(height: 12),
                 SignaraPrimaryButton(
                   label: 'Start Session',
                   onPressed: () async {

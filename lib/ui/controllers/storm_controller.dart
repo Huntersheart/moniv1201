@@ -7,6 +7,7 @@ import 'package:background_fetch/background_fetch.dart';
 
 import '../../data/services/nws_service.dart';
 import '../../data/services/ble_service.dart';
+import '../../data/services/notification_service.dart';
 
 /// Claves en SharedPreferences
 const String _kPrefLastSentZone = 'storm_last_sent_zone';
@@ -121,6 +122,9 @@ class StormController extends GetxController {
       stormAlertActive.value = true;
       lastAlertHeadline.value = alert.headline;
       debugPrint('[Storm] ALERTA: ${alert.event} en ${alert.zone}');
+
+      // Mostrar notificación push al dueño
+      await NotificationService.instance.showStormAlert(headline: alert.headline);
 
       // Anti-spam: verificar cooldown antes de mandar BLE
       final shouldSend = await _shouldSendCommand(alert.zone);

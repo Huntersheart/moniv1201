@@ -6,6 +6,7 @@ import 'package:background_fetch/background_fetch.dart';
 
 import 'app/app.dart';
 import 'data/remote/firebase_service.dart';
+import 'data/services/notification_service.dart';
 import 'ui/controllers/storm_controller.dart';
 
 void _capturePasswordResetFromUri(Uri? uri) {
@@ -25,6 +26,7 @@ Future<void> main() async {
   BackgroundFetch.registerHeadlessTask(stormHeadlessCallback);
 
   await FirebaseService.initialize();
+  await NotificationService.instance.init();
   if (FirebaseService.isInitialized) {
     try {
       final initial = await AppLinks()
