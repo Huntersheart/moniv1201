@@ -166,11 +166,9 @@ class SessionCsvService {
     final stamp    = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
     final file     = File('${dir.path}/signara_${safeName}_$stamp.csv');
     await file.writeAsString(csv);
-    await SharePlus.instance.share(
-      ShareParams(
-        files: [XFile(file.path, mimeType: 'text/csv')],
-        subject: 'Signara sessions — $dogName',
-      ),
+    await Share.shareXFiles(
+      [XFile(file.path, mimeType: 'text/csv')],
+      subject: 'Signara sessions — $dogName',
     );
   }
 }

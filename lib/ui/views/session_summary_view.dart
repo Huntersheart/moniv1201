@@ -288,7 +288,7 @@ class _SummaryContent extends StatelessWidget {
               ],
             ),
           ),
-        if (!isVest && !isCollar) const SizedBox(height: 16);
+        if (!isVest && !isCollar) const SizedBox(height: 16),
 
         // ── Notes ──────────────────────────────────────────
         _cardBox(
