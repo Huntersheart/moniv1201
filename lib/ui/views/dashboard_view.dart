@@ -1517,8 +1517,9 @@ class _DogDetailDialogContent extends StatelessWidget {
                     Get.toNamed<void>(
                       AppRoutes.nfcIdentity,
                       arguments: {
-                        'dogId':   d.dogId,
-                        'dogName': d.name,
+                        'dogId':    d.dogId,
+                        'dogName':  d.name,
+                        'photoUrl': d.photoUrl,
                       },
                     );
                   },
