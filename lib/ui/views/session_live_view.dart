@@ -472,15 +472,30 @@ class _SessionLiveViewState extends State<SessionLiveView> {
                                   onSatStoodAlone: (v) => _c.hipSatStoodAlone.value = v,
                                 );
                               }
-                              // Collar (default)
-                              return _SessionLogCard(
-                                movement: _c.movement.value,
-                                comfort: _c.comfort.value,
-                                energy: _c.energy.value,
-                                onMovement: (v) => _c.movement.value = v,
-                                onComfort: (v) => _c.comfort.value = v,
-                                onEnergy: (v) => _c.energy.value = v,
-                              );
+                              // Collar (default) — live gait + sensor cards
+                              if (!Get.isRegistered<BleController>()) {
+                                return const SizedBox.shrink();
+                              }
+                              return Obx(() {
+                                final ble = Get.find<BleController>();
+                                final cs  = ble.collarStatus.value;
+                                if (!ble.isConnected || cs == null) {
+                                  return const SizedBox.shrink();
+                                }
+                                final ga = _GaitAssessment.from(cs,
+                                    dogName: dog?.name ?? 'Dog');
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    if (cs.stormMode)
+                                      _StormShieldCard(pressure: cs.pressure),
+                                    if (cs.stormMode) const SizedBox(height: 14),
+                                    _CollarGaitCard(ga: ga),
+                                    const SizedBox(height: 14),
+                                    _CollarSensorCollapsible(cs: cs),
+                                  ],
+                                );
+                              });
                             }),
                             const SizedBox(height: 18),
                             _LimpCard(
@@ -2131,6 +2146,571 @@ class _EndSessionButton extends StatelessWidget {
             style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, decoration: TextDecoration.none),
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// COLLAR — GAIT ASSESSMENT (espejo de _PainAssessment del vest)
+// ══════════════════════════════════════════════════════════════════════════════
+
+enum _GaitLevel { good, watch, alert }
+
+class _GaitAssessment {
+  final _GaitLevel level;
+  final String headline;
+  final String detail;
+  final String gaitBalance;   // "Symmetric 3%" / "Asymmetric 18%"
+  final String heartRate;     // "Normal" / "Elevated — 118 BPM"
+  final String spo2;          // "Normal" / "Low — 92%"
+  final String temperature;   // "Normal" / "Elevated 39.2 °C"
+  final String cadence;       // "94 steps/min" / "—"
+  final double asymmetryPct;  // 0.0–1.0 para barra
+  final int    coughCount;
+
+  const _GaitAssessment({
+    required this.level,
+    required this.headline,
+    required this.detail,
+    required this.gaitBalance,
+    required this.heartRate,
+    required this.spo2,
+    required this.temperature,
+    required this.cadence,
+    required this.asymmetryPct,
+    required this.coughCount,
+  });
+
+  Color get borderColor {
+    switch (level) {
+      case _GaitLevel.good:  return const Color(0xFF16D351);
+      case _GaitLevel.watch: return const Color(0xFFFFB347);
+      case _GaitLevel.alert: return const Color(0xFFFF4C6A);
+    }
+  }
+
+  Color get accentColor => borderColor;
+
+  String get badgeText {
+    switch (level) {
+      case _GaitLevel.good:  return 'Good';
+      case _GaitLevel.watch: return 'Watch';
+      case _GaitLevel.alert: return 'Alert';
+    }
+  }
+
+  static _GaitAssessment from(CollarStatus s, {String dogName = 'Dog'}) {
+    int score = 0;
+
+    // ── Head-bob asymmetry ────────────────────────────────
+    String gaitBalance;
+    int asymScore = 0;
+    double asymPct = 0;
+    if (!s.hasGaitData || s.headBobAsymmetry < 0) {
+      gaitBalance = '—';
+    } else {
+      asymPct = s.headBobAsymmetry.clamp(0.0, 1.0);
+      final pctInt = (asymPct * 100).round();
+      if (asymPct < 0.10) {
+        gaitBalance = 'Symmetric  $pctInt%';
+      } else if (asymPct < 0.25) {
+        gaitBalance = 'Asymmetric  $pctInt%';
+        asymScore = 1;
+      } else {
+        gaitBalance = 'Asymmetric  $pctInt%';
+        asymScore = 2;
+      }
+    }
+    score += asymScore;
+
+    // ── Heart rate ────────────────────────────────────────
+    String hrLabel;
+    int hrScore = 0;
+    if (s.heartRate < 0 || !s.hrValid) {
+      hrLabel = '—';
+    } else if (s.heartRate <= 100) {
+      hrLabel = 'Normal';
+    } else if (s.heartRate <= 120) {
+      hrLabel = 'Elevated — ${s.heartRate} BPM';
+      hrScore = 1;
+    } else {
+      hrLabel = 'High — ${s.heartRate} BPM';
+      hrScore = 2;
+    }
+    score += hrScore;
+
+    // ── SpO2 ──────────────────────────────────────────────
+    String spo2Label;
+    int spo2Score = 0;
+    if (s.spo2 < 0 || !s.spo2Valid) {
+      spo2Label = '—';
+    } else if (s.spo2 >= 95) {
+      spo2Label = 'Normal';
+    } else if (s.spo2 >= 90) {
+      spo2Label = 'Low — ${s.spo2}%';
+      spo2Score = 1;
+    } else {
+      spo2Label = 'Very low — ${s.spo2}%';
+      spo2Score = 2;
+    }
+    score += spo2Score;
+
+    // ── Temperature ───────────────────────────────────────
+    String tempLabel;
+    int tempScore = 0;
+    if (s.tempBody <= 0) {
+      tempLabel = '—';
+    } else if (s.tempBody < 39.0) {
+      tempLabel = 'Normal';
+    } else if (s.tempBody < 39.5) {
+      tempLabel = 'Elevated  ${s.tempBody.toStringAsFixed(1)} °C';
+      tempScore = 1;
+    } else {
+      tempLabel = 'High  ${s.tempBody.toStringAsFixed(1)} °C';
+      tempScore = 2;
+    }
+    score += tempScore;
+
+    // ── Cadence ───────────────────────────────────────────
+    final cadenceLabel = s.gaitCadence >= 0
+        ? '${s.gaitCadence.toStringAsFixed(0)} steps/min'
+        : '—';
+
+    // ── Overall level ─────────────────────────────────────
+    _GaitLevel level;
+    String headline;
+    String detail;
+
+    if (score == 0) {
+      level    = _GaitLevel.good;
+      headline = '$dogName\'s gait looks good';
+      detail   = 'Symmetric stride · Vitals normal';
+    } else if (asymScore >= 2 || score >= 3) {
+      level    = _GaitLevel.alert;
+      if (asymScore >= 2) {
+        headline = 'Significant gait asymmetry';
+        detail   = 'Head bob detected — may indicate lameness';
+      } else {
+        headline = 'Multiple indicators elevated';
+        detail   = 'Gait + vitals out of range — consider stopping';
+      }
+    } else {
+      level    = _GaitLevel.watch;
+      if (asymScore >= 1) {
+        headline = 'Mild gait asymmetry';
+        detail   = '$dogName is compensating — keep monitoring';
+      } else {
+        headline = 'Some indicators elevated';
+        detail   = 'Mild changes in vitals — keep monitoring';
+      }
+    }
+
+    return _GaitAssessment(
+      level:        level,
+      headline:     headline,
+      detail:       detail,
+      gaitBalance:  gaitBalance,
+      heartRate:    hrLabel,
+      spo2:         spo2Label,
+      temperature:  tempLabel,
+      cadence:      cadenceLabel,
+      asymmetryPct: asymPct,
+      coughCount:   s.coughEvents,
+    );
+  }
+}
+
+// ── Collar Gait Card ──────────────────────────────────────────────────────────
+
+class _CollarGaitCard extends StatelessWidget {
+  const _CollarGaitCard({required this.ga});
+  final _GaitAssessment ga;
+
+  Color _sigColor(String val) {
+    if (val == 'Normal' || val.startsWith('Symmetric') || val == 'Good') {
+      return const Color(0xFF16D351);
+    }
+    if (val.startsWith('High') || val.startsWith('Very') || val.startsWith('Alert') ||
+        val.startsWith('Significant')) {
+      return const Color(0xFFFF4C6A);
+    }
+    if (val == '—' || val == 'Resting') return Colors.white70;
+    return const Color(0xFFFFB347);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _kCardBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: ga.borderColor.withValues(alpha: 0.6), width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ── Header row ──────────────────────────────────
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'GAIT',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.4),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                  decoration: TextDecoration.none,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: ga.accentColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: ga.accentColor.withValues(alpha: 0.5)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 7, height: 7,
+                      decoration: BoxDecoration(
+                        color: ga.accentColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      ga.badgeText,
+                      style: TextStyle(
+                        color: ga.accentColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        decoration: TextDecoration.none,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // ── Headline ─────────────────────────────────────
+          Text(
+            ga.headline,
+            style: TextStyle(
+              color: ga.accentColor,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              decoration: TextDecoration.none,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            ga.detail,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.5),
+              fontSize: 13,
+              height: 1.4,
+              decoration: TextDecoration.none,
+            ),
+          ),
+          const SizedBox(height: 14),
+          // ── Signal rows ───────────────────────────────────
+          _PainSignalRow(label: 'Gait balance', value: ga.gaitBalance,  valueColor: _sigColor(ga.gaitBalance)),
+          _PainSignalRow(label: 'Heart rate',   value: ga.heartRate,    valueColor: _sigColor(ga.heartRate)),
+          _PainSignalRow(label: 'SpO₂',         value: ga.spo2,         valueColor: _sigColor(ga.spo2)),
+          _PainSignalRow(label: 'Temperature',  value: ga.temperature,  valueColor: _sigColor(ga.temperature)),
+          _PainSignalRow(label: 'Cadence',      value: ga.cadence,      valueColor: Colors.white70),
+          if (ga.coughCount > 0)
+            _PainSignalRow(
+              label: 'Vocalizations',
+              value: '${ga.coughCount} detected',
+              valueColor: const Color(0xFFFFB347),
+            ),
+          // ── Asymmetry bar ─────────────────────────────────
+          if (ga.asymmetryPct > 0) ...[
+            const SizedBox(height: 12),
+            const Divider(height: 1, color: Colors.white12),
+            const SizedBox(height: 10),
+            Text(
+              'HEAD-BOB ASYMMETRY',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.35),
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+                decoration: TextDecoration.none,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: ga.asymmetryPct,
+                    minHeight: 9,
+                    backgroundColor: Colors.white.withValues(alpha: 0.07),
+                    valueColor: AlwaysStoppedAnimation<Color>(ga.borderColor),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                '${(ga.asymmetryPct * 100).round()}%',
+                style: TextStyle(
+                  color: ga.borderColor,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  decoration: TextDecoration.none,
+                ),
+              ),
+            ]),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ── Collar Sensor Collapsible ─────────────────────────────────────────────────
+
+class _CollarSensorCollapsible extends StatefulWidget {
+  const _CollarSensorCollapsible({required this.cs});
+  final CollarStatus cs;
+
+  @override
+  State<_CollarSensorCollapsible> createState() => _CollarSensorCollapsibleState();
+}
+
+class _CollarSensorCollapsibleState extends State<_CollarSensorCollapsible>
+    with SingleTickerProviderStateMixin {
+  bool _open = false;
+  late final AnimationController _ctrl;
+  late final Animation<double>   _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 260));
+    _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _toggle() {
+    setState(() => _open = !_open);
+    _open ? _ctrl.forward() : _ctrl.reverse();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = widget.cs;
+    return Container(
+      decoration: BoxDecoration(
+        color: _kCardBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ── Toggle row ──────────────────────────────────
+          InkWell(
+            onTap: _toggle,
+            borderRadius: BorderRadius.circular(14),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Ver datos',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.45),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      decoration: TextDecoration.none,
+                    ),
+                  ),
+                  AnimatedRotation(
+                    turns: _open ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 260),
+                    child: Icon(Icons.keyboard_arrow_down_rounded,
+                        color: Colors.white.withValues(alpha: 0.3), size: 20),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // ── Expandable body ─────────────────────────────
+          SizeTransition(
+            sizeFactor: _anim,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Divider(height: 1, color: Colors.white12),
+                  const SizedBox(height: 12),
+                  // ── Vitals grid ──────────────────────────
+                  Row(children: [
+                    Expanded(child: _DataTile(
+                      label: 'Heart Rate',
+                      value: cs.hrValid ? '${cs.heartRate} BPM' : '—',
+                      color: _kHrColor,
+                    )),
+                    const SizedBox(width: 8),
+                    Expanded(child: _DataTile(
+                      label: 'SpO₂',
+                      value: cs.spo2Valid ? '${cs.spo2}%' : '—',
+                      color: _kSpo2Color,
+                    )),
+                  ]),
+                  const SizedBox(height: 8),
+                  Row(children: [
+                    Expanded(child: _DataTile(
+                      label: 'Body Temp',
+                      value: cs.tempBody > 0 ? '${cs.tempBody.toStringAsFixed(1)} °C' : '—',
+                      color: _kTempColor,
+                    )),
+                    const SizedBox(width: 8),
+                    Expanded(child: _DataTile(
+                      label: 'Ambient',
+                      value: cs.tempAmbient > 0
+                          ? '${cs.tempAmbient.toStringAsFixed(1)} °C  ${cs.humidity.toStringAsFixed(0)}%'
+                          : '—',
+                      color: Colors.white38,
+                    )),
+                  ]),
+                  const SizedBox(height: 8),
+                  Row(children: [
+                    Expanded(child: _DataTile(
+                      label: 'Pressure',
+                      value: cs.pressure > 0 ? '${cs.pressure.toStringAsFixed(1)} hPa' : '—',
+                      color: const Color(0xFF7B68EE),
+                    )),
+                    const SizedBox(width: 8),
+                    Expanded(child: _DataTile(
+                      label: 'LDT',
+                      value: '${cs.ldtValue}',
+                      color: _kImuColor,
+                    )),
+                  ]),
+                  if (cs.hasGaitData) ...[
+                    const SizedBox(height: 12),
+                    // ── Gait raw ──────────────────────────
+                    Text(
+                      'Gait — raw',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.3),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.4,
+                        decoration: TextDecoration.none,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    _RawRow(label: 'Head-bob asym', value: '${(cs.headBobAsymmetry * 100).round()}%'),
+                    if (cs.gaitCadence >= 0)
+                      _RawRow(label: 'Cadence',      value: '${cs.gaitCadence.toStringAsFixed(1)} steps/min'),
+                    if (cs.gaitVariability >= 0)
+                      _RawRow(label: 'Variability',  value: '${(cs.gaitVariability * 100).round()}%'),
+                    _RawRow(label: 'Vocalizations',  value: '${cs.coughEvents}'),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Storm Shield Card (ámbar — aparece cuando stormMode activo) ───────────────
+
+class _StormShieldCard extends StatelessWidget {
+  const _StormShieldCard({required this.pressure});
+  final double pressure;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1400),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFFB347).withValues(alpha: 0.7), width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('🌩️', style: TextStyle(fontSize: 18)),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Storm Shield Active',
+                  style: TextStyle(
+                    color: Color(0xFFFFB347),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    decoration: TextDecoration.none,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFB347).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFFFB347).withValues(alpha: 0.5)),
+                ),
+                child: const Text(
+                  'Triggered',
+                  style: TextStyle(
+                    color: Color(0xFFFFB347),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    decoration: TextDecoration.none,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Rapid pressure drop detected — a storm may be approaching in 30–45 min.',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.55),
+              fontSize: 13,
+              height: 1.4,
+              decoration: TextDecoration.none,
+            ),
+          ),
+          if (pressure > 0) ...[
+            const SizedBox(height: 10),
+            Text(
+              'Current: ${pressure.toStringAsFixed(1)} hPa',
+              style: const TextStyle(
+                color: Color(0xFFFFB347),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                decoration: TextDecoration.none,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

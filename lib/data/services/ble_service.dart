@@ -25,13 +25,23 @@ enum BleStatus { disconnected, scanning, connecting, connected }
 
 /// Datos de status recibidos del collar (STATUS_UUID Notify cada 2s)
 class CollarStatus {
-  final int statusByte;
-  final double pressure;
-  final double tempBody;
-  final double tempAmbient;
-  final double humidity;
-  final int ldtValue;
-  final bool gpsFixed;
+  final int    statusByte;
+  final double pressure;      // hPa (BME280)
+  final double tempBody;      // °C (TMP117)
+  final double tempAmbient;   // °C (BME280)
+  final double humidity;      // % RH (BME280)
+  final int    ldtValue;      // LDT-028K raw
+  final bool   gpsFixed;      // GPS fix
+  // MAX30101 — biometrics
+  final int    heartRate;     // BPM (-1 = sin contacto)
+  final int    spo2;          // %   (-1 = sin contacto)
+  final bool   hrValid;
+  final bool   spo2Valid;
+  // LSM6DSOX — gait (IMU procesada en firmware)
+  final double headBobAsymmetry; // 0.0–1.0 (0=simétrico, 1=cojera severa)
+  final double gaitCadence;      // pasos/min (-1 = sin datos)
+  final double gaitVariability;  // coeficiente de variación 0–1 (-1 = sin datos)
+  final int    coughEvents;      // conteo acumulado de tos/ladridos (LDT)
 
   const CollarStatus({
     required this.statusByte,
@@ -41,20 +51,38 @@ class CollarStatus {
     required this.humidity,
     required this.ldtValue,
     required this.gpsFixed,
+    this.heartRate        = -1,
+    this.spo2             = -1,
+    this.hrValid          = false,
+    this.spo2Valid        = false,
+    this.headBobAsymmetry = -1,
+    this.gaitCadence      = -1,
+    this.gaitVariability  = -1,
+    this.coughEvents      = 0,
   });
 
-  bool get stormMode  => (statusByte & 0x80) != 0;
-  bool get hasGpsFix  => gpsFixed;
+  bool get stormMode   => (statusByte & 0x80) != 0;
+  bool get hasGpsFix   => gpsFixed;
+  bool get hasContact  => heartRate != -1;
+  bool get hasGaitData => headBobAsymmetry >= 0;
 
   factory CollarStatus.fromJson(Map<String, dynamic> j) {
     return CollarStatus(
-      statusByte:   (j['st']  as num?)?.toInt()    ?? 0,
-      pressure:     (j['p']   as num?)?.toDouble() ?? 0,
-      tempBody:     (j['tc']  as num?)?.toDouble() ?? 0,
-      tempAmbient:  (j['ta']  as num?)?.toDouble() ?? 0,
-      humidity:     (j['hum'] as num?)?.toDouble() ?? 0,
-      ldtValue:     (j['ldt'] as num?)?.toInt()    ?? 0,
-      gpsFixed:     ((j['gps'] as num?)?.toInt() ?? 0) == 1,
+      statusByte:        (j['st']    as num?)?.toInt()    ?? 0,
+      pressure:          (j['p']     as num?)?.toDouble() ?? 0,
+      tempBody:          (j['tc']    as num?)?.toDouble() ?? 0,
+      tempAmbient:       (j['ta']    as num?)?.toDouble() ?? 0,
+      humidity:          (j['hum']   as num?)?.toDouble() ?? 0,
+      ldtValue:          (j['ldt']   as num?)?.toInt()    ?? 0,
+      gpsFixed:          ((j['gps']  as num?)?.toInt()    ?? 0) == 1,
+      heartRate:         (j['hr']    as num?)?.toInt()    ?? -1,
+      spo2:              (j['spo2']  as num?)?.toInt()    ?? -1,
+      hrValid:           ((j['hrv']  as num?)?.toInt()    ?? 0) == 1,
+      spo2Valid:         ((j['spo2v'] as num?)?.toInt()   ?? 0) == 1,
+      headBobAsymmetry:  (j['hba']   as num?)?.toDouble() ?? -1,
+      gaitCadence:       (j['gc']    as num?)?.toDouble() ?? -1,
+      gaitVariability:   (j['gv']    as num?)?.toDouble() ?? -1,
+      coughEvents:       (j['ce']    as num?)?.toInt()    ?? 0,
     );
   }
 }

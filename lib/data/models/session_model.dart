@@ -39,6 +39,15 @@ class SessionModel {
   final int vestLoadSide;     // 0=sym, 1=right, 2=left
   final int vestHeartRate;    // BPM (-1 = no contact)
   final double vestTempBody;  // °C (-999 = no reading)
+  final int vestRespRate;     // respiraciones/min (-1 = sin datos)
+  final int vestWorn;         // 1=puesto, 0=no puesto (FSR406)
+
+  // ── Collar auto-assessment ────────────────────────────────────────────────
+  final int    collarHeartRate; // BPM (-1 = no contact)
+  final int    collarSpo2;      // % (-1 = no contact)
+  final double collarTempBody;  // °C (-999 = no reading)
+  final int    collarLdt;       // LDT-028K raw value
+  final bool   collarGpsFix;    // GPS fix
 
   const SessionModel({
     required this.sessionId,
@@ -71,6 +80,13 @@ class SessionModel {
     this.vestLoadSide = 0,
     this.vestHeartRate = -1,
     this.vestTempBody = -999,
+    this.vestRespRate = -1,
+    this.vestWorn = 0,
+    this.collarHeartRate = -1,
+    this.collarSpo2 = -1,
+    this.collarTempBody = -999,
+    this.collarLdt = 0,
+    this.collarGpsFix = false,
   });
 
   // ── Display helpers ───────────────────────────────────────────────────────
@@ -230,6 +246,14 @@ class SessionModel {
       vestLoadSide:     map['vestWeightBearing'] as int? ?? 0,
       vestHeartRate:    map['vestHR']            as int? ?? -1,
       vestTempBody:     (map['vestTemp']         as num?)?.toDouble() ?? -999,
+      vestRespRate:     map['vestRespRate']       as int? ?? -1,
+      vestWorn:         map['vestWorn']           as int? ?? 0,
+      // Collar sensor data
+      collarHeartRate:  map['collarHeartRate']   as int? ?? -1,
+      collarSpo2:       map['collarSpo2']        as int? ?? -1,
+      collarTempBody:   (map['collarTempBody']   as num?)?.toDouble() ?? -999,
+      collarLdt:        map['collarLdt']         as int? ?? 0,
+      collarGpsFix:     map['collarGpsFix']      as bool? ?? false,
     );
   }
 
@@ -266,6 +290,14 @@ class SessionModel {
       'vestWeightBearing': vestLoadSide,
       'vestHR':            vestHeartRate,
       'vestTemp':          vestTempBody,
+      'vestRespRate':      vestRespRate,
+      'vestWorn':          vestWorn,
+      // Collar sensor data
+      'collarHeartRate':   collarHeartRate,
+      'collarSpo2':        collarSpo2,
+      'collarTempBody':    collarTempBody,
+      'collarLdt':         collarLdt,
+      'collarGpsFix':      collarGpsFix,
     };
   }
 
@@ -278,7 +310,9 @@ class SessionModel {
     String? hapticPreset, double? intensity, bool? hapticOn,
     String? notes, String? photoUrl, String? videoUrl, DateTime? createdAt,
     int? vestPainLevel, int? vestAsymmetryPct, int? vestLoadSide,
-    int? vestHeartRate, double? vestTempBody,
+    int? vestHeartRate, double? vestTempBody, int? vestRespRate, int? vestWorn,
+    int? collarHeartRate, int? collarSpo2, double? collarTempBody,
+    int? collarLdt, bool? collarGpsFix,
   }) {
     return SessionModel(
       sessionId:       sessionId       ?? this.sessionId,
@@ -311,6 +345,13 @@ class SessionModel {
       vestLoadSide:     vestLoadSide     ?? this.vestLoadSide,
       vestHeartRate:    vestHeartRate    ?? this.vestHeartRate,
       vestTempBody:     vestTempBody     ?? this.vestTempBody,
+      vestRespRate:     vestRespRate     ?? this.vestRespRate,
+      vestWorn:         vestWorn         ?? this.vestWorn,
+      collarHeartRate:  collarHeartRate  ?? this.collarHeartRate,
+      collarSpo2:       collarSpo2       ?? this.collarSpo2,
+      collarTempBody:   collarTempBody   ?? this.collarTempBody,
+      collarLdt:        collarLdt        ?? this.collarLdt,
+      collarGpsFix:     collarGpsFix     ?? this.collarGpsFix,
     );
   }
 }
