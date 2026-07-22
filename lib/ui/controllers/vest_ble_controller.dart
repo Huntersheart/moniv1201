@@ -6,7 +6,7 @@ import 'package:get/get.dart';
 import '../../data/services/vest_ble_service.dart';
 
 export '../../data/services/vest_ble_service.dart'
-    show VestBleStatus, VestStatus;
+    show VestBleStatus, VestStatus, BurstSample;
 
 /// GetX controller que expone el estado BLE del vest a la UI.
 ///
@@ -44,6 +44,13 @@ class VestBleController extends GetxController {
 
   StreamSubscription<VestBleStatus>? _statusSub;
   StreamSubscription<VestStatus>?    _vestSub;
+  StreamSubscription<List<BurstSample>>? _burstSub;
+
+  // ── Burst IMU ─────────────────────────────────────────────
+  /// Último burst recibido — reactivo, actualiza la UI al llegar.
+  final lastBurst = Rxn<List<BurstSample>>();
+  /// Todos los bursts de la sesión activa (para persistencia al finalizar).
+  final sessionBursts = <List<BurstSample>>[];
 
   // ── Getters UI ────────────────────────────────────────────
   bool get isConnected  => status.value == VestBleStatus.connected;
@@ -69,12 +76,18 @@ class VestBleController extends GetxController {
     _vestSub = _ble.vestStream.listen((s) {
       vestStatus.value = s;
     });
+    _burstSub = _ble.burstStream.listen((samples) {
+      lastBurst.value = samples;
+      sessionBursts.add(samples);
+      debugPrint('[VestBleController] burst recibido: ${samples.length} muestras (total sesión: ${sessionBursts.length} bursts)');
+    });
   }
 
   @override
   void onClose() {
     _statusSub?.cancel();
     _vestSub?.cancel();
+    _burstSub?.cancel();
     super.onClose();
   }
 
@@ -82,6 +95,8 @@ class VestBleController extends GetxController {
 
   /// Llamar cuando empieza una sesión de vest.
   Future<void> startSession() async {
+    sessionBursts.clear();
+    lastBurst.value = null;
     await _ble.startAutoConnect();
   }
 

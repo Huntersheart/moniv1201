@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:math' show sqrt;
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -457,6 +459,21 @@ class _SessionLiveViewState extends State<SessionLiveView> {
                                     children: [
                                       _VestPainCard(pa: pa),
                                       const SizedBox(height: 14),
+                                      // ── Vitales en tiempo real (siempre visibles) ──
+                                      _VestLiveVitals(ble: ble, vs: vs),
+                                      const SizedBox(height: 14),
+                                      // ── Gráfica BURST IMU (aparece tras el primer burst) ──
+                                      Obx(() {
+                                        final burst = ble.lastBurst.value;
+                                        if (burst == null) return const SizedBox.shrink();
+                                        return Column(
+                                          children: [
+                                            _VestBurstCard(samples: burst),
+                                            const SizedBox(height: 14),
+                                          ],
+                                        );
+                                      }),
+                                      // ── Datos raw (colapsable, para debug) ──
                                       _VestSensorCollapsible(ble: ble, vs: vs),
                                     ],
                                   );
@@ -746,6 +763,210 @@ class _ShoulderBar extends StatelessWidget {
 }
 
 // ── Collapsible sensor data ───────────────────────────────────────────────────
+
+// ══════════════════════════════════════════════════════════════
+//  _VestLiveVitals — vitales en tiempo real siempre visibles
+// ══════════════════════════════════════════════════════════════
+
+class _VestLiveVitals extends StatelessWidget {
+  const _VestLiveVitals({required this.ble, required this.vs});
+  final VestBleController ble;
+  final VestStatus        vs;
+
+  @override
+  Widget build(BuildContext context) {
+    // vs es un snapshot tomado en el Obx padre — se actualizará
+    // cuando el padre se re-render. Para vitales críticos (HR, SpO₂)
+    // forzamos re-render reactivo observando vestStatus directamente.
+    return Obx(() {
+      final v      = ble.vestStatus.value ?? vs;
+      final hrText   = ble.hrValid   ? '${ble.heartRate} BPM' : '—';
+      final spo2Text = ble.spo2Valid ? '${ble.spo2}%'         : '—';
+      final tempText = v.tempBody > -900
+          ? '${v.tempBody.toStringAsFixed(1)} °C'
+          : '—';
+      final ambText = v.tempAmbient > -900
+          ? '${v.tempAmbient.toStringAsFixed(1)} °C  ${v.humidity.toStringAsFixed(0)}%'
+          : '—';
+
+      return Container(
+        decoration: BoxDecoration(
+          color: _kCardBg,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'VITALS · LIVE',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.4),
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.2,
+                decoration: TextDecoration.none,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(children: [
+              Expanded(child: _DataTile(label: 'Heart Rate', value: hrText,   color: _kHrColor)),
+              const SizedBox(width: 8),
+              Expanded(child: _DataTile(label: 'SpO₂',      value: spo2Text, color: _kSpo2Color)),
+            ]),
+            const SizedBox(height: 8),
+            Row(children: [
+              Expanded(child: _DataTile(label: 'Body Temp', value: tempText, color: _kTempColor)),
+              const SizedBox(width: 8),
+              Expanded(child: _DataTile(label: 'Ambient',   value: ambText,  color: Colors.white38)),
+            ]),
+          ],
+        ),
+      );
+    });
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  _VestBurstCard — gráfica IMU del último burst (cada ~30 s)
+// ══════════════════════════════════════════════════════════════
+
+class _VestBurstCard extends StatelessWidget {
+  const _VestBurstCard({required this.samples});
+  final List<BurstSample> samples;
+
+  static const int _maxPoints = 200;
+
+  List<FlSpot> _buildSpots() {
+    final src = samples.length > _maxPoints
+        ? samples.sublist(samples.length - _maxPoints)
+        : samples;
+    return List.generate(src.length, (i) {
+      final s = src[i];
+      final mag = sqrt(s.ax * s.ax + s.ay * s.ay + s.az * s.az);
+      return FlSpot(i.toDouble(), mag);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (samples.isEmpty) return const SizedBox.shrink();
+
+    final spots   = _buildSpots();
+    final maxY    = spots.map((s) => s.y).reduce((a, b) => a > b ? a : b);
+    final minY    = spots.map((s) => s.y).reduce((a, b) => a < b ? a : b);
+    final padY    = ((maxY - minY) * 0.15).clamp(0.5, 5.0);
+
+    // Stats
+    final mags  = spots.map((s) => s.y).toList();
+    final mean  = mags.reduce((a, b) => a + b) / mags.length;
+    final peak  = mags.reduce((a, b) => a > b ? a : b);
+    final durMs = samples.isNotEmpty
+        ? ((samples.last.timestampUs - samples.first.timestampUs) / 1000).round()
+        : 0;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: _kCardBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _kImuColor.withValues(alpha: 0.3)),
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'IMU BURST',
+                style: TextStyle(
+                  color: _kImuColor.withValues(alpha: 0.8),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2,
+                  decoration: TextDecoration.none,
+                ),
+              ),
+              Text(
+                '${samples.length} muestras · ${durMs}ms',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.35),
+                  fontSize: 10,
+                  decoration: TextDecoration.none,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Gráfica |a| m/s²
+          SizedBox(
+            height: 90,
+            child: LineChart(
+              LineChartData(
+                minY: (minY - padY).clamp(0, double.infinity),
+                maxY: maxY + padY,
+                gridData: const FlGridData(show: false),
+                borderData: FlBorderData(show: false),
+                titlesData: const FlTitlesData(show: false),
+                lineTouchData: const LineTouchData(enabled: false),
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: spots,
+                    isCurved: true,
+                    curveSmoothness: 0.3,
+                    color: _kImuColor,
+                    barWidth: 1.5,
+                    dotData: const FlDotData(show: false),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      color: _kImuColor.withValues(alpha: 0.08),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          // Stats row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _BurstStat(label: 'Mean',     value: '${mean.toStringAsFixed(2)} m/s²'),
+              _BurstStat(label: 'Peak',     value: '${peak.toStringAsFixed(2)} m/s²'),
+              _BurstStat(label: 'Samples',  value: '${samples.length}'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BurstStat extends StatelessWidget {
+  const _BurstStat({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.35), fontSize: 9, decoration: TextDecoration.none),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: TextStyle(color: _kImuColor, fontSize: 11, fontWeight: FontWeight.w700, decoration: TextDecoration.none),
+        ),
+      ],
+    );
+  }
+}
 
 class _VestSensorCollapsible extends StatefulWidget {
   const _VestSensorCollapsible({required this.ble, required this.vs});

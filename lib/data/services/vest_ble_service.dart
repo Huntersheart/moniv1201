@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
@@ -8,6 +9,7 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 const String _kServiceUuid = 'a1240001-abcd-1234-5678-a12400000000';
 const String _kCmdUuid     = 'a1240002-abcd-1234-5678-a12400000000';
 const String _kStatusUuid  = 'a1240003-abcd-1234-5678-a12400000000';
+const String _kBurstUuid   = 'a1240004-abcd-1234-5678-a12400000000';
 const String _kDeviceName  = 'SIGNARA_VEST';
 
 const int _kCmdPing = 0x01;
@@ -83,6 +85,84 @@ class VestStatus {
   }
 }
 
+// ────────────────────────────────────────────────────────────
+//  BURST IMU — una muestra del buffer de 250 (50 Hz × 5 s)
+// ────────────────────────────────────────────────────────────
+
+/// Una muestra IMU del paquete BURST_UUID (28 bytes: ts + ax/ay/az + gx/gy/gz, LE floats)
+class BurstSample {
+  final int    timestampUs; // uint32 µs desde boot del ESP32
+  final double ax, ay, az;  // m/s²
+  final double gx, gy, gz;  // rad/s
+
+  const BurstSample({
+    required this.timestampUs,
+    required this.ax, required this.ay, required this.az,
+    required this.gx, required this.gy, required this.gz,
+  });
+}
+
+/// Recibe y re-ensambla los paquetes binarios de BURST_UUID.
+///
+/// Protocolo:
+///   Paquete datos  (0x01): [type(1), seqHi(1), seqLo(1), count(1), N×28 bytes]
+///   Paquete final  (0x02): [type(1), reserved(3), total(4 LE)]
+///
+/// Fires [onBurstComplete] con la lista de muestras cuando llega el 0x02.
+class BurstReceiver {
+  final void Function(List<BurstSample> samples, int totalSent, int lost)
+      onBurstComplete;
+
+  BurstReceiver({required this.onBurstComplete});
+
+  final List<BurstSample> _buf   = [];
+  int                     _expected = 0;
+
+  void handlePacket(List<int> raw) {
+    if (raw.isEmpty) return;
+    final type = raw[0];
+
+    if (type == 0x01) {
+      // Data packet: [0x01, seqHi, seqLo, count, ...samples]
+      if (raw.length < 4) return;
+      final count = raw[3];
+      final data  = Uint8List.fromList(raw);
+      final bd    = ByteData.sublistView(data, 4);
+      final expectedLen = count * 28;
+      if (bd.lengthInBytes < expectedLen) return;
+
+      for (int i = 0; i < count; i++) {
+        final o = i * 28;
+        _buf.add(BurstSample(
+          timestampUs: bd.getUint32(o,      Endian.little),
+          ax:          bd.getFloat32(o + 4,  Endian.little),
+          ay:          bd.getFloat32(o + 8,  Endian.little),
+          az:          bd.getFloat32(o + 12, Endian.little),
+          gx:          bd.getFloat32(o + 16, Endian.little),
+          gy:          bd.getFloat32(o + 20, Endian.little),
+          gz:          bd.getFloat32(o + 24, Endian.little),
+        ));
+      }
+    } else if (type == 0x02) {
+      // Final packet: [0x02, reserved×3, total(uint32 LE)]
+      if (raw.length >= 8) {
+        final bd = ByteData.sublistView(Uint8List.fromList(raw), 4);
+        _expected = bd.getUint32(0, Endian.little);
+      }
+      final lost    = _expected > 0 ? (_expected - _buf.length).clamp(0, _expected) : 0;
+      final samples = List<BurstSample>.from(_buf);
+      _buf.clear();
+      onBurstComplete(samples, _expected, lost);
+      _expected = 0;
+    }
+  }
+
+  void reset() {
+    _buf.clear();
+    _expected = 0;
+  }
+}
+
 /// Estado de la conexión BLE del vest
 enum VestBleStatus { disconnected, scanning, connecting, connected }
 
@@ -94,9 +174,12 @@ class VestBleService {
   // ── Streams ───────────────────────────────────────────────
   final _statusCtrl = StreamController<VestBleStatus>.broadcast();
   final _vestCtrl   = StreamController<VestStatus>.broadcast();
+  final _burstCtrl  = StreamController<List<BurstSample>>.broadcast();
 
-  Stream<VestBleStatus> get connectionStream => _statusCtrl.stream;
-  Stream<VestStatus>    get vestStream       => _vestCtrl.stream;
+  Stream<VestBleStatus>    get connectionStream => _statusCtrl.stream;
+  Stream<VestStatus>       get vestStream       => _vestCtrl.stream;
+  /// Emite una lista de BurstSamples cada vez que el vest completa una ráfaga IMU (cada ~30 s).
+  Stream<List<BurstSample>> get burstStream     => _burstCtrl.stream;
 
   VestBleStatus _bleStatus = VestBleStatus.disconnected;
   VestBleStatus get currentStatus => _bleStatus;
@@ -105,11 +188,21 @@ class VestBleService {
   BluetoothDevice?         _device;
   BluetoothCharacteristic? _cmdChar;
   BluetoothCharacteristic? _statusChar;
+  BluetoothCharacteristic? _burstChar;
 
   StreamSubscription<List<ScanResult>>?         _scanSub;
   StreamSubscription<BluetoothConnectionState>? _connSub;
   StreamSubscription<List<int>>?                _notifySub;
+  StreamSubscription<List<int>>?                _burstNotifySub;
   StreamSubscription<bool>?                     _isScanSub;
+
+  late final BurstReceiver _burstReceiver = BurstReceiver(
+    onBurstComplete: (samples, totalSent, lost) {
+      if (lost > 0) debugPrint('[VestBLE] BURST: $lost muestras perdidas de $totalSent');
+      debugPrint('[VestBLE] BURST completado: ${samples.length} muestras');
+      _burstCtrl.add(samples);
+    },
+  );
 
   bool _autoConnectEnabled = false;
 
@@ -190,6 +283,8 @@ class VestBleService {
 
     try {
       await device.connect(timeout: const Duration(seconds: 8));
+      // Negociar MTU amplio para recibir paquetes BURST de 88 bytes sin fragmentación
+      try { await device.requestMtu(185); } catch (_) {}
       await _discoverServices(device);
     } catch (e) {
       debugPrint('[VestBLE] connect error: $e');
@@ -206,6 +301,7 @@ class VestBleService {
         final uuid = char.uuid.toString().toLowerCase();
         if (uuid == _kCmdUuid)    _cmdChar    = char;
         if (uuid == _kStatusUuid) _statusChar = char;
+        if (uuid == _kBurstUuid)  _burstChar  = char;
       }
     }
 
@@ -225,6 +321,20 @@ class VestBleService {
         debugPrint('[VestBLE] status parse error: $e');
       }
     });
+
+    // ── BURST_UUID — notificaciones binarias IMU cada ~30 s ──
+    if (_burstChar != null) {
+      await _burstChar!.setNotifyValue(true);
+      _burstNotifySub?.cancel();
+      _burstReceiver.reset();
+      _burstNotifySub = _burstChar!.onValueReceived.listen(
+        _burstReceiver.handlePacket,
+        onError: (Object e) => debugPrint('[VestBLE] burst notify error: $e'),
+      );
+      debugPrint('[VestBLE] BURST_UUID suscrito ✓');
+    } else {
+      debugPrint('[VestBLE] BURST_UUID no encontrado — firmware actualizado?');
+    }
 
     _setStatus(VestBleStatus.connected);
     debugPrint('[VestBLE] Conectado a SIGNARA_VEST ✓');
@@ -253,11 +363,14 @@ class VestBleService {
     _scanSub?.cancel();
     _isScanSub?.cancel();
     _notifySub?.cancel();
+    _burstNotifySub?.cancel();
     _connSub?.cancel();
+    _burstReceiver.reset();
     try { await _device?.disconnect(); } catch (_) {}
     _device     = null;
     _cmdChar    = null;
     _statusChar = null;
+    _burstChar  = null;
     _setStatus(VestBleStatus.disconnected);
   }
 
@@ -269,5 +382,6 @@ class VestBleService {
   void dispose() {
     _statusCtrl.close();
     _vestCtrl.close();
+    _burstCtrl.close();
   }
 }
