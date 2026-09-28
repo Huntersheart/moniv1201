@@ -497,7 +497,31 @@ class _SessionLiveViewState extends State<SessionLiveView> {
                                 final ble = Get.find<BleController>();
                                 final cs  = ble.collarStatus.value;
                                 if (!ble.isConnected || cs == null) {
-                                  return const SizedBox.shrink();
+                                  // Collar not connected — show placeholder so
+                                  // manual cards below are still reachable
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 18, horizontal: 16),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF0D1B2A),
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(
+                                          color: Colors.white12, width: 1),
+                                    ),
+                                    child: const Row(
+                                      children: [
+                                        Icon(Icons.bluetooth_disabled_rounded,
+                                            color: Colors.white38, size: 20),
+                                        SizedBox(width: 10),
+                                        Text(
+                                          'Connect collar to see live data',
+                                          style: TextStyle(
+                                              color: Colors.white38,
+                                              fontSize: 13),
+                                        ),
+                                      ],
+                                    ),
+                                  );
                                 }
                                 final ga = _GaitAssessment.from(cs,
                                     dogName: dog?.name ?? 'Dog');
